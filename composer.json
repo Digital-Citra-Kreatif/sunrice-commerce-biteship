@@ -1,0 +1,71 @@
+{
+    "name": "sunrice/commerce-biteship",
+    "description": "Biteship shipping for Sunrice Commerce: live rates from Indonesian couriers (JNE, J&T, SiCepat, GoSend, Grab…), automatic pickup booking and tracking.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "sunrice",
+        "laravel",
+        "ecommerce",
+        "shipping",
+        "biteship",
+        "indonesia"
+    ],
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/Digital-Citra-Kreatif/sunrice-cms"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/Digital-Citra-Kreatif/sunrice-commerce"
+        }
+    ],
+    "require": {
+        "php": "^8.4",
+        "illuminate/contracts": "^13.0",
+        "illuminate/http": "^13.0",
+        "illuminate/support": "^13.0",
+        "spatie/laravel-package-tools": "^1.93",
+        "sunrice/commerce": "^1.0 || dev-main"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.0",
+        "orchestra/testbench": "^11.0",
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-laravel": "^4.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Sunrice\\CommerceBiteship\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Sunrice\\CommerceBiteship\\Tests\\": "tests/",
+            "Workbench\\App\\": "workbench/app/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Sunrice\\CommerceBiteship\\BiteshipServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "lint": "pint --test",
+        "format": "pint",
+        "analyse": "phpstan analyse --memory-limit=1G"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
