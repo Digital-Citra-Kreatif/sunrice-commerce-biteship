@@ -44,7 +44,8 @@ it('books the pickup when the order is paid and ships it with the waybill', func
         && $r['origin_collection_method'] === 'pickup'
         && $r['destination_contact_name'] === 'Rina'
         && ! isset($r['destination_cash_on_delivery'])
-        && $r['items'] === [['name' => 'Mug', 'value' => 50000, 'quantity' => 2, 'weight' => 500, 'length' => 10, 'width' => 8, 'height' => 12]]);
+        && $r['shipper_organization'] === 'Toko Mug'
+        && $r['items'] === [['name' => 'Mug', 'value' => 50000, 'quantity' => 2, 'weight' => 500, 'length' => 10, 'width' => 8, 'height' => 12, 'sku' => 'MUG', 'category' => 'others']]);
     expect($order->events()->pluck('message')->implode("\n"))->toContain('Biteship (JNE) (JNE0001)');
 });
 
@@ -143,14 +144,75 @@ it('tracks booked shipments from commerce:tick', function () {
     $order = biteshipOrderPlaced();
     Http::fake(['api.biteship.com/v1/orders' => Http::response(biteshipOrder())]);
     app(MarkOrderPaid::class)->handle($order, Actor::system());
-    Http::fake(['api.biteship.com/v1/trackings/bs_track_1' => Http::response(['success' => true, 'status' => 'delivered', 'history' => [
+    Http::fake(['api.biteship.com/v1/orders/bs_order_1' => Http::response(biteshipOrder('delivered', 'JNE0001', ['courier' => ['history' => [
         ['note' => 'Picked up by the courier', 'status' => 'picked', 'updated_at' => '2026-10-18T10:00:00+07:00'],
         ['note' => 'Delivered to Rina', 'status' => 'delivered', 'updated_at' => '2026-10-19T10:00:00+07:00'],
-    ]])]);
+    ]]]))]);
 
     $info = app(ShipmentTracker::class)->track(Shipment::query()->sole());
 
     expect($info->delivered)->toBeTrue()
         ->and($info->history[1]['status'])->toBe('Delivered to Rina')
         ->and(Shipment::query()->sole()->status)->toBe('delivered');
+});
+
+it('takes over a booking Biteship already has for the reference', function () {
+    $order = biteshipOrderPlaced();
+    Http::fake([
+        'api.biteship.com/v1/orders' => Http::response(['success' => false, 'error' => 'Reference id has already been used before', 'code' => 40002060,
+            'details' => ['order_id' => 'bs_order_1', 'reference_id' => $order->number]], 400),
+        'api.biteship.com/v1/orders/bs_order_1' => Http::response(biteshipOrder()),
+    ]);
+
+    app(MarkOrderPaid::class)->handle($order, Actor::system());
+
+    expect($order->shipments()->sole())->tracking_number->toBe('JNE0001')
+        ->and($order->shipments()->sole()->meta['biteship']['order_id'])->toBe('bs_order_1');
+});
+
+it('cancels only until pickup, and notes a price change at pickup', function () {
+    $order = biteshipOrderPlaced();
+    Http::fake(['api.biteship.com/v1/orders' => Http::response(biteshipOrder())]);
+    Http::fakeSequence('api.biteship.com/v1/orders/bs_order_1')->push(biteshipOrder('picked', 'JNE0001', ['price' => 15000]));
+    app(MarkOrderPaid::class)->handle($order, Actor::system());
+    $shipment = $order->shipments()->sole();
+
+    $this->postJson('/biteship/webhook', ['event' => 'order.price', 'order_id' => 'bs_order_1'])->assertOk();
+    actingAsUserWith(['commerce.orders.view', 'commerce.shipments.manage']);
+    $this->post("/cms/commerce/orders/{$order->id}/biteship/{$shipment->id}/cancel")->assertSessionHasErrors('biteship');
+
+    expect($shipment->fresh()->cost)->toBe(15000)
+        ->and($order->events()->pluck('message')->implode("\n"))->toContain('Rp12.500')->toContain('Rp15.000');
+});
+
+it('asks for the webhook token when one is set', function () {
+    config(['commerce-biteship.webhook_token' => 'secret-token']);
+
+    $this->postJson('/biteship/webhook', ['order_id' => 'bs_order_1'])->assertForbidden();
+    $this->postJson('/biteship/webhook?token=secret-token', [])->assertOk();
+});
+
+it('refreshes bookings still waiting for a waybill from commerce:tick', function () {
+    $order = biteshipOrderPlaced();
+    Http::fake(['api.biteship.com/v1/orders' => Http::response(biteshipOrder('confirmed', null))]);
+    Http::fakeSequence('api.biteship.com/v1/orders/bs_order_1')->push(biteshipOrder('allocated', 'GRB-77'));
+    app(MarkOrderPaid::class)->handle($order, Actor::system());
+
+    $this->travel(2)->hours();
+    $this->artisan('commerce:tick')->assertSuccessful();
+
+    expect($order->shipments()->sole()->tracking_number)->toBe('GRB-77');
+});
+
+it('hands over the way the courier offers on the route', function () {
+    $this->method->update(['settings' => [...$this->method->settings, 'collection' => 'drop_off']]);
+    Http::fake(['api.biteship.com/v1/rates/couriers' => Http::response(['success' => true, 'pricing' => [
+        [...biteshipRates()['pricing'][0], 'available_collection_method' => ['pickup']],
+    ]])]);
+    $order = placeOrder(cartWithMugs(2), checkoutInput($this->method));
+    Http::fake(['api.biteship.com/v1/orders' => Http::response(biteshipOrder())]);
+
+    app(MarkOrderPaid::class)->handle($order, Actor::system());
+
+    Http::assertSent(fn (Request $r) => str_ends_with($r->url(), '/v1/orders') && $r['origin_collection_method'] === 'pickup');
 });

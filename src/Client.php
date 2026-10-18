@@ -52,12 +52,6 @@ class Client
         return $this->send('post', '/v1/orders/'.rawurlencode($id).'/cancel', ['cancellation_reason_code' => 'others', 'cancellation_reason' => $reason]);
     }
 
-    /** @return array<string, mixed> */
-    public function tracking(string $id): array
-    {
-        return $this->send('get', '/v1/trackings/'.rawurlencode($id));
-    }
-
     /**
      * Areas matching a place name ("Sukajadi, Bandung"), best match first.
      *
@@ -86,7 +80,7 @@ class Client
         }
         $json = (array) $response->json();
         if ($response->failed() || ($json['success'] ?? true) === false) {
-            throw new BiteshipException((string) ($json['error'] ?? $json['message'] ?? 'Biteship returned HTTP '.$response->status()), isset($json['code']) ? (int) $json['code'] : null);
+            throw new BiteshipException((string) ($json['error'] ?? $json['message'] ?? 'Biteship returned HTTP '.$response->status()), isset($json['code']) ? (int) $json['code'] : null, (array) ($json['details'] ?? []));
         }
 
         return $json;

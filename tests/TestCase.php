@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sunrice\CommerceBiteship\Tests;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Inertia\ServiceProvider as InertiaServiceProvider;
 use Laravel\Mcp\Server\McpServiceProvider;
 use Laravel\Socialite\SocialiteServiceProvider;
@@ -28,6 +29,7 @@ class TestCase extends Orchestra
     {
         RouteMatcher::flush(keepCache: true);
         parent::setUp();
+        Http::preventStrayRequests();   // every Biteship call in a test is faked
     }
 
     protected function getPackageProviders($app): array

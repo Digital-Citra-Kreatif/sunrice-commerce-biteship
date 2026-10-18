@@ -35,6 +35,13 @@ return [
     */
     'webhook_path' => env('BITESHIP_WEBHOOK_PATH', 'biteship/webhook'),
 
+    /*
+    | Optional: a random string Biteship must send as ?token=… on the webhook
+    | URL. Webhooks are checked against the API either way; the token keeps
+    | strangers from making the store ask Biteship.
+    */
+    'webhook_token' => env('BITESHIP_WEBHOOK_TOKEN'),
+
     // The queue for automatic bookings (null: the default queue).
     'queue' => env('BITESHIP_QUEUE'),
 ];

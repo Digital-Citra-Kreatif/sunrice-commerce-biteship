@@ -17,8 +17,8 @@ class CancelPickup
 
     public function handle(Shipment $shipment, Actor $actor, string $reason = 'Cancelled by the store'): Shipment
     {
-        if (! Bookings::active($shipment) || in_array($shipment->status, ['delivered', 'returned'], true)) {
-            throw ValidationException::withMessages(['biteship' => 'This shipment has no open Biteship booking.']);
+        if (! Bookings::cancellable($shipment)) {
+            throw ValidationException::withMessages(['biteship' => 'The courier has picked this parcel up: Biteship can\'t cancel it any more.']);
         }
         $this->cancelRemote((string) $shipment->meta['biteship']['order_id'], $reason);
         $this->bookings->apply($shipment, $this->client->order((string) $shipment->meta['biteship']['order_id']));

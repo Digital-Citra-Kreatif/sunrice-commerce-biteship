@@ -42,6 +42,8 @@ class BiteshipServiceProvider extends PackageServiceProvider
             Commerce::registerCourier($key, $name);
         }
 
+        Commerce::onTick('biteship', fn (): int => commerce_feature('biteship') && app(Client::class)->configured() ? app(Bookings::class)->refreshPending(app(Client::class)) : 0);
+
         Event::listen(OrderPaid::class, BookWhenReady::class);
         Event::listen(OrderPlaced::class, BookWhenReady::class);
 
@@ -65,6 +67,7 @@ class BiteshipServiceProvider extends PackageServiceProvider
         $shipment = app(Bookings::class)->shipmentFor($order);
         $booking = (array) ($shipment?->meta['biteship'] ?? []);
         $active = Bookings::active($shipment) && ! in_array($shipment?->status, ['delivered', 'returned'], true);
+        $cancellable = Bookings::cancellable($shipment);
         $processing = in_array($order->status, ['processing', 'completed', 'on_hold'], true);
         $unshipped = $order->items()->whereNull('parent_id')->where('requires_shipping', true)->get()->contains(fn ($i) => $i->unfulfilled() > 0);
         $driver = array_filter([$booking['driver']['name'] ?? null, $booking['driver']['phone'] ?? null, $booking['driver']['plate'] ?? null]);
@@ -83,7 +86,7 @@ class BiteshipServiceProvider extends PackageServiceProvider
                 'price' => isset($booking['price']) ? app(MoneyFormatter::class)->format((int) $booking['price']) : null,
             ],
             'can_book' => $processing && ! $active && ($unshipped || $shipment?->status === 'cancelled'),
-            'can_cancel' => $active,
+            'can_cancel' => $cancellable,
             'urls' => [
                 'book' => route('sunrice.admin.commerce-biteship.book', ['order' => $order->id]),
                 'cancel' => $route('cancel'),

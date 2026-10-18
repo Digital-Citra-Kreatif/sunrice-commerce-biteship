@@ -5,11 +5,13 @@ declare(strict_types=1);
 return [
     'timeline' => [
         'booked' => 'Pickup booked with Biteship (:courier)',
+        'price' => 'Biteship changed the shipping price from :from to :to (weighed at pickup)',
         'booking_failed' => 'Biteship booking failed: :message',
         'status' => 'Biteship: :status',
     ],
     'status' => [
         'confirmed' => 'Booked, finding a courier',
+        'scheduled' => 'Pickup scheduled',
         'allocated' => 'Courier assigned, waiting to pick up',
         'picking_up' => 'Courier on the way to pick up',
         'picked' => 'Picked up',

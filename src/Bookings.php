@@ -9,6 +9,7 @@ use Sunrice\Commerce\Orders\Actor;
 use Sunrice\Commerce\Orders\Models\Order;
 use Sunrice\Commerce\Orders\Models\Shipment;
 use Sunrice\Commerce\Orders\Timeline;
+use Sunrice\Commerce\Support\MoneyFormatter;
 
 /**
  * Biteship bookings live on commerce shipments, in meta.biteship (order
@@ -23,6 +24,9 @@ class Bookings
 
     protected const IN_TRANSIT = ['picked', 'in_transit', 'dropping_off', 'on_hold', 'return_in_transit'];
 
+    /** Biteship cancels a booking only until the courier has picked the parcel up. */
+    public const CANCELLABLE = ['confirmed', 'scheduled', 'allocated', 'picking_up'];
+
     public function __construct(protected Timeline $timeline, protected UpdateShipment $update) {}
 
     /** The order's latest Biteship shipment. */
@@ -34,6 +38,11 @@ class Bookings
     public static function active(?Shipment $shipment): bool
     {
         return $shipment !== null && isset($shipment->meta['biteship']['order_id']) && ! in_array($shipment->meta['biteship']['status'] ?? '', self::ENDED, true);
+    }
+
+    public static function cancellable(?Shipment $shipment): bool
+    {
+        return self::active($shipment) && in_array($shipment?->meta['biteship']['status'] ?? '', self::CANCELLABLE, true);
     }
 
     /**
@@ -62,6 +71,29 @@ class Bookings
             'status' => $order['status'] ?? null,
             'testing' => app(Client::class)->testing() ?: null,
         ], fn ($v) => $v !== null);
+    }
+
+    /**
+     * The tick step: bookings still waiting for a waybill (commerce's own
+     * tracking needs one), refreshed at most hourly, in case a webhook was missed.
+     */
+    public function refreshPending(Client $client): int
+    {
+        $refreshed = 0;
+        $pending = Shipment::query()->with('order')->whereIn('status', ['shipped', 'in_transit'])->whereNull('tracking_number')
+            ->where('shipped_at', '>=', now()->subDays(14))->whereNotNull('meta->biteship->order_id')->orderBy('id')->limit(100)->get()
+            ->filter(fn (Shipment $s) => ($at = $s->meta['biteship']['synced_at'] ?? $s->meta['biteship']['booked_at'] ?? null) === null || now()->diffInMinutes($at, true) >= 60)
+            ->take(20);
+        foreach ($pending as $shipment) {
+            try {
+                $this->apply($shipment, $client->order((string) $shipment->meta['biteship']['order_id']));
+                $refreshed++;
+            } catch (BiteshipException $e) {
+                report($e);
+            }
+        }
+
+        return $refreshed;
     }
 
     public static function statusLabel(string $status): string
@@ -96,6 +128,11 @@ class Bookings
             },
             'meta' => [...(array) $shipment->meta, 'biteship' => $now],
         ])->save();
+        if (isset($before['price'], $now['price']) && $before['price'] !== $now['price']) {
+            $money = app(MoneyFormatter::class);
+            $this->timeline->record($shipment->order, 'shipment', __('commerce-biteship::biteship.timeline.price', ['from' => $money->format((int) $before['price']), 'to' => $money->format((int) $now['price'])]),
+                ['shipment_id' => $shipment->id], Actor::system());
+        }
         if ($status !== '' && $status !== ($before['status'] ?? null)) {
             $this->timeline->record($shipment->order, 'shipment', __('commerce-biteship::biteship.timeline.status', ['status' => self::statusLabel($status)]),
                 ['shipment_id' => $shipment->id, 'biteship_status' => $status], Actor::system());

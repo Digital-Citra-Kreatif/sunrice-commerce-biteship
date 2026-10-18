@@ -36,6 +36,10 @@ class BiteshipHealthCheck implements HealthCheck
         if ($origin['postal_code'] === null && $origin['area_id'] === null && ! Locations::hasCoordinates($origin)) {
             return HealthResult::error('Biteship can\'t tell where parcels leave from.', 'Add the postal code to the store address (Settings → Store → General) or set BITESHIP_ORIGIN_POSTAL_CODE.');
         }
+        $settings = app(StoreSettings::class);
+        if (! config('commerce-biteship.origin.contact_phone') && ! ($settings->get('general.address.phone') ?: $settings->get('general.phone'))) {
+            return HealthResult::error('Bookings need a phone number for the courier at pickup.', 'Add the store phone (Settings → Store → General) or set BITESHIP_ORIGIN_CONTACT_PHONE.');
+        }
         if ($client->testing() && app()->isProduction()) {
             return HealthResult::warning('Biteship is in Testing Mode: bookings are simulated and no courier comes.', 'Use a live key (biteship_live.…) in BITESHIP_API_KEY.');
         }

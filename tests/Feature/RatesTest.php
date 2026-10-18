@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Sunrice\Commerce\Cart\CartView;
@@ -81,4 +82,15 @@ it('shows no Biteship rates without an API key, and none while Biteship is down'
     config(['commerce-biteship.api_key' => 'biteship_test.key']);
     Http::fake(['api.biteship.com/*' => Http::response(['success' => false, 'error' => 'Server error', 'code' => 50000000], 500)]);
     expect(quotedRates(cartWithMugs(3), checkoutInput($this->method)))->toBe([]);
+});
+
+it('shows no rates, without reporting an error, when no courier serves the route', function () {
+    Http::fake(['api.biteship.com/v1/rates/couriers' => Http::response(['success' => false, 'error' => 'No courier available for requested location', 'code' => 40001010], 400)]);
+    $reported = [];
+    app(ExceptionHandler::class)->reportable(function (Throwable $e) use (&$reported) {
+        $reported[] = $e;
+    });
+
+    expect(quotedRates($this->cart, checkoutInput($this->method)))->toBe([])
+        ->and($reported)->toBe([]);
 });

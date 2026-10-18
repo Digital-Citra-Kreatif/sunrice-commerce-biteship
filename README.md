@@ -21,6 +21,7 @@
 - [Booking, cancelling and labels](#booking-cancelling-and-labels)
 - [Tracking and webhooks](#tracking-and-webhooks)
 - [Testing Mode](#testing-mode)
+- [Going live](#going-live)
 - [Instant couriers (GoSend, GrabExpress)](#instant-couriers-gosend-grabexpress)
 - [How it fits into commerce](#how-it-fits-into-commerce)
 - [Development](#development)
@@ -48,6 +49,7 @@ Settings → Store → Features.
 | `BITESHIP_ORIGIN_CONTACT_NAME`, `BITESHIP_ORIGIN_CONTACT_PHONE` | | Who the courier asks for at pickup; empty uses the store's name and phone |
 | `BITESHIP_ORIGIN_NOTE` | | A note for the courier ("ring the bell at the side door") |
 | `BITESHIP_WEBHOOK_PATH` | `biteship/webhook` | See [Tracking and webhooks](#tracking-and-webhooks) |
+| `BITESHIP_WEBHOOK_TOKEN` | | Optional: a random string the webhook URL must carry as `?token=…` |
 | `BITESHIP_QUEUE` | | The queue for automatic bookings (null: the default) |
 
 Publish `config/commerce-biteship.php` with `php artisan vendor:publish --tag=commerce-biteship-config`
@@ -66,6 +68,7 @@ Settings → Store → Shipping → a zone → add a method of the type **Bitesh
 | Book the pickup | **From the order page**, or **When the order is paid** (cash on delivery: when it is placed) |
 | Hand over | The courier picks up at the store, or you drop parcels off at the courier |
 | Insure parcels for their value | Adds Biteship's insurance to rates and bookings |
+| What you ship | Biteship's item category (fashion, food and drink, electronics…); food and drink gets instant couriers assigned faster |
 
 The usual method settings (title, minimum subtotal, maximum weight…) apply too.
 
@@ -73,7 +76,9 @@ Checkout shows one rate per courier service, e.g. "JNE Reguler · 2 - 3 days". R
 postal code: the customer's, or their village's from commerce's region list, or, when neither is
 known, Biteship's area for the district (looked up once and remembered for 30 days). Weights are
 the variants' weights in grams and sizes their dimensions in centimetres, so fill those in on your
-products. Cash on delivery orders only see couriers that collect cash, priced with the COD fee.
+products. Cash on delivery orders only see couriers that collect cash, priced with the COD fee,
+and none above Biteship's COD limit of Rp15.000.000. When a route has no courier, checkout simply
+shows no Biteship rate.
 
 Rates are cached for ten minutes per cart and address by commerce.
 
@@ -94,20 +99,34 @@ booking (status, courier, waybill, driver, price, live tracking) and has the but
 - **Print label**: the shipping label PDF. Override the template with
   `resources/views/vendor/commerce-biteship/label.blade.php`.
 - **Refresh**: fetches the booking now.
-- **Cancel booking**: cancels it at Biteship; the shipment is marked cancelled and **Book again**
-  books it anew on the same shipment (reference `ORDER-NUMBER-2`).
+- **Cancel booking**: until the courier has picked the parcel up (Biteship's rule), cancels it at
+  Biteship; the shipment is marked cancelled and **Book again** books it anew on the same shipment
+  (reference `ORDER-NUMBER-2`).
 
 Bookings are paid from your Biteship balance, so keep it topped up. A booking that gets no courier
 (`courier_not_found`) or is rejected also marks the shipment cancelled: book it again.
 
 Automatic bookings run on the queue (three tries for network errors; Biteship's own refusals
-aren't retried). Run a queue worker.
+aren't retried). Run a queue worker. If Biteship already has a booking for the reference (the
+answer to an earlier try was lost), that booking is taken over rather than refused.
+
+The hand-over follows the method's setting when the courier offers it on the route, otherwise the
+way it does offer (pickup or drop-off, from Biteship's rates). Items go to Biteship with their name,
+variant, SKU, price, weight and size, and the method's category.
 
 ## Tracking and webhooks
 
-Add a webhook in Biteship's dashboard (Integrations → Webhook) pointing at
-`https://your-store.example/biteship/webhook`, with the events `order.status`, `order.price` and
-`order.waybill_id`.
+Biteship has no API for webhooks: add it in the dashboard.
+
+1. Biteship dashboard → Integrations → **Pengaturan** (Settings) → Webhook → **Tambah Webhook**.
+2. URL: `https://your-store.example/biteship/webhook` (with `?token=…` when you set
+   `BITESHIP_WEBHOOK_TOKEN`). It must be HTTPS and reachable from the internet; Biteship calls it
+   once when you save, and the package answers 200.
+3. Events: `order.status`, `order.price` and `order.waybill_id`.
+4. Add it once in Testing Mode and once in live mode: each mode has its own webhooks.
+
+In Testing Mode, Biteship's order list has a yellow button on each order to fire its webhooks
+(Play Webhook): use it to walk a test booking through picked up, in transit and delivered.
 
 Biteship doesn't sign webhooks, so the package only reads which booking changed from them and
 then fetches that booking from Biteship's API before it changes anything. A forged webhook can at
@@ -115,15 +134,16 @@ most make the store ask Biteship again. Statuses move the shipment:
 
 | Biteship | Shipment |
 | --- | --- |
-| confirmed, allocated, picking_up | shipped |
+| confirmed, scheduled, allocated, picking_up | shipped |
 | picked, in_transit, dropping_off, on_hold, return_in_transit | in transit |
 | delivered | delivered (`ShipmentDelivered`) |
 | returned | returned |
 | cancelled, rejected, courier_not_found, disposed | cancelled (book again from the order page) |
 
-Every change is on the order's timeline. Some couriers issue the waybill only after pickup; it
-arrives with the `order.waybill_id` webhook. Without webhooks, commerce's `commerce:tick` still
-asks Biteship for tracking once an hour for shipments with a waybill.
+Every change is on the order's timeline, including a new price when the courier weighs the parcel
+differently at pickup (`order.price`; the shipment's cost follows). Some couriers issue the
+waybill only after pickup; it arrives with the `order.waybill_id` webhook. Without webhooks,
+`commerce:tick` still asks Biteship about each open booking once an hour.
 
 ## Testing Mode
 
@@ -135,9 +155,25 @@ Turn on **Mode Testing** in Biteship's dashboard and create a key there: it star
 - rates, areas and tracking are real data, and Biteship counts them as paid usage even in Testing
   Mode.
 
-Switch to a `biteship_live.` key to go live. Biteship asks you to request activation of the Order
-API for live keys first (dashboard → Integrations). The health check warns about a test key in
-production.
+The health check warns about a test key in production.
+
+## Going live
+
+Biteship activates the Order API for live keys only after reviewing a test integration
+(dashboard → Integrations → API → **Aktivasi Order API**):
+
+1. In Testing Mode, place an order in the store and book it (Book pickup on the order page). Copy
+   its Biteship order id from the panel ("Booking"): the form asks for a **Test Order ID**.
+2. Choose the live key and the couriers to activate.
+3. The form asks whether you use your own shipping label: you do. Upload a sample made with
+   **Print label** on the test order.
+4. Submit ("Kirim Data Aktivasi API") and wait for the status to read **Aktif**.
+5. Put the `biteship_live.` key in `BITESHIP_API_KEY`, add the live webhook, and top up the
+   Biteship balance (bookings are paid from it).
+6. For cash on delivery, ask Biteship to enable COD for your account and couriers; until then
+   bookings of COD orders are refused ("not available for COD feature").
+
+Rates and tracking work with a live key before activation; only bookings wait for it.
 
 ## Instant couriers (GoSend, GrabExpress)
 
