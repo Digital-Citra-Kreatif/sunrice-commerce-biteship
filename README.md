@@ -15,6 +15,7 @@
 
 ## Contents
 
+- [Setup checklist](#setup-checklist)
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Setting up the shipping method](#setting-up-the-shipping-method)
@@ -25,6 +26,49 @@
 - [Instant couriers (GoSend, GrabExpress)](#instant-couriers-gosend-grabexpress)
 - [How it fits into commerce](#how-it-fits-into-commerce)
 - [Development](#development)
+
+## Setup checklist
+
+Biteship has no API for webhooks or for activating bookings, so a few steps happen in its
+dashboard. In order:
+
+**In the store**
+
+1. `composer require sunrice/commerce-biteship` and publish the panel
+   (`php artisan vendor:publish --tag=commerce-biteship-assets --force`, also on every deploy).
+2. Set the store address with its postal code and the store phone (Settings → Store → General).
+   Biteship needs a phone number for the courier at pickup.
+3. Add a Biteship method to a shipping zone and choose the couriers, the booking moment, the
+   hand-over and what you ship ([details](#setting-up-the-shipping-method)).
+4. Run a queue worker (automatic bookings) and the scheduler (`commerce:tick`).
+5. Check the store health check: it lists anything missing.
+
+**In Biteship, Testing Mode**
+
+6. Turn on **Mode Testing** in the dashboard sidebar and create a test key (Integrations → API →
+   Tambah Kunci API). Put it in `BITESHIP_API_KEY`.
+7. Add the webhook: Integrations → **Pengaturan** → Webhook → **Tambah Webhook**, URL
+   `https://your-store.example/biteship/webhook` (HTTPS, reachable from the internet; add
+   `?token=…` if you set `BITESHIP_WEBHOOK_TOKEN`), events `order.status`, `order.price` and
+   `order.waybill_id`. Biteship calls it once when you save; the package answers 200.
+8. Place a test order in the store, book it (Book pickup on the order page, or pay it with
+   automatic booking on) and print its label.
+9. In Biteship's order list, use the yellow **Play Webhook** buttons on that order to walk it
+   through picked up, in transit and delivered, and watch the order page follow.
+
+**Going live**
+
+10. Integrations → API → **Aktivasi Order API**: choose the live key and couriers, paste the test
+    order's Biteship id (the panel's "Booking"), say you use your own label and upload a label
+    printed from the test order, and submit. Wait for the status **Aktif**.
+11. Put the `biteship_live.` key in `BITESHIP_API_KEY` and add the webhook again with Testing Mode
+    off: each mode has its own webhooks.
+12. Top up the Biteship balance: bookings are paid from it.
+13. For cash on delivery, ask Biteship to enable COD for your account and couriers; until then
+    COD bookings are refused.
+
+Remember: in Testing Mode bookings are simulated (no courier comes, nothing is charged), but
+rates, areas and tracking are real data that Biteship counts as paid usage.
 
 ## Installation
 
@@ -206,7 +250,10 @@ composer analyse   # Larastan
 ```
 
 `sunrice/cms` and `sunrice/commerce` come from their GitHub repositories until they are on
-Packagist. To work against local checkouts next to this one, copy `composer.json` to
+Packagist. While those are private, installing needs a GitHub token that can read them: locally
+`composer config --global github-oauth.github.com <token>`, and in this repository's CI the
+`COMPOSER_AUTH` secret (Settings → Secrets and variables → Actions), e.g.
+`{"github-oauth": {"github.com": "<token>"}}`. To work against local checkouts next to this one, copy `composer.json` to
 `composer.local.json`, point its repositories at `../sunrice-cms` and `../sunrice-commerce` as
 `path` repositories, and run `COMPOSER=composer.local.json composer install`.
 
