@@ -1,0 +1,18 @@
+providers:
+  - Sunrice\SunriceServiceProvider
+  - Inertia\ServiceProvider
+  - Spatie\Permission\PermissionServiceProvider
+  - Spatie\Honeypot\HoneypotServiceProvider
+  - Laravel\Mcp\Server\McpServiceProvider
+  - Spatie\OneTimePasswords\OneTimePasswordsServiceProvider
+  - Laravel\Socialite\SocialiteServiceProvider
+  - Sunrice\Commerce\CommerceServiceProvider
+  - Sunrice\CommerceBiteship\BiteshipServiceProvider
+
+migrations:
+  - workbench/database/migrations
+
+env:
+  AUTH_MODEL: Workbench\App\Models\User
+  SUNRICE_USER_MODEL: Workbench\App\Models\User
+  DB_CONNECTION: sqlite

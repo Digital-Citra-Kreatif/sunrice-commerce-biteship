@@ -1,0 +1,10 @@
+vendor/
+node_modules/
+.phpunit.cache/
+composer.lock
+workbench/database/*.sqlite
+.env
+.phpunit.result.cache
+database.sqlite
+composer.local.json
+composer.local.lock
