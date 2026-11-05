@@ -14,11 +14,18 @@
     "repositories": [
         {
             "type": "vcs",
-            "url": "https://github.com/Digital-Citra-Kreatif/sunrice-cms"
+            "url": "https://github.com/Digital-Citra-Kreatif/sunrice-admin",
+            "no-api": true
         },
         {
             "type": "vcs",
-            "url": "https://github.com/Digital-Citra-Kreatif/sunrice-commerce"
+            "url": "https://github.com/Digital-Citra-Kreatif/sunrice-cms",
+            "no-api": true
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/Digital-Citra-Kreatif/sunrice-commerce",
+            "no-api": true
         }
     ],
     "require": {
@@ -27,6 +34,7 @@
         "illuminate/http": "^13.0",
         "illuminate/support": "^13.0",
         "spatie/laravel-package-tools": "^1.93",
+        "sunrice/admin": "^0.6 || dev-main",
         "sunrice/commerce": "^1.0 || dev-main"
     },
     "require-dev": {

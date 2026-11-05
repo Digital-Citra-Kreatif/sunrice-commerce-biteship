@@ -34,8 +34,9 @@ dashboard. In order:
 
 **In the store**
 
-1. `composer require sunrice/commerce-biteship` and publish the panel
-   (`php artisan vendor:publish --tag=commerce-biteship-assets --force`, also on every deploy).
+1. `composer require sunrice/commerce-biteship`, add `BiteshipPlugin::make()` after commerce in
+   your panel provider and publish the panel's script (`php artisan sunrice:assets`, also on
+   every deploy).
 2. Set the store address with its postal code and the store phone (Settings → Store → General).
    Biteship needs a phone number for the courier at pickup.
 3. Add a Biteship method to a shipping zone and choose the couriers, the booking moment, the
@@ -74,12 +75,21 @@ rates, areas and tracking are real data that Biteship counts as paid usage.
 
 ```bash
 composer require sunrice/commerce-biteship
-php artisan vendor:publish --tag=commerce-biteship-assets --force   # the order page's Biteship panel
 ```
 
-Run the publish command again after each update (add it to your deploy script next to
-`commerce-assets`). The package registers itself; switch it off with the **Biteship** feature in
-Settings → Store → Features.
+Add its plugin after commerce's in your panel provider: it adds the order page's booking routes
+and its Biteship panel.
+
+```php
+use Sunrice\CommerceBiteship\BiteshipPlugin;
+
+return $panel->plugin(CmsPlugin::make())->plugin(CommercePlugin::make())->plugin(BiteshipPlugin::make());
+```
+
+`php artisan sunrice:assets` publishes the panel's script with the other plugins' (so does
+`composer update`, through the `laravel-assets` tag). The shipping method, rates, webhooks and
+booking register themselves; switch them off with the **Biteship** feature in Settings → Store →
+Features.
 
 ## Configuration
 
@@ -249,12 +259,12 @@ composer lint      # Pint
 composer analyse   # Larastan
 ```
 
-`sunrice/cms` and `sunrice/commerce` come from their GitHub repositories until they are on
+`sunrice/admin`, `sunrice/cms` and `sunrice/commerce` come from their GitHub repositories until they are on
 Packagist. While those are private, installing needs a GitHub token that can read them: locally
 `composer config --global github-oauth.github.com <token>`, and in this repository's CI the
 `COMPOSER_AUTH` secret (Settings → Secrets and variables → Actions), e.g.
 `{"github-oauth": {"github.com": "<token>"}}`. To work against local checkouts next to this one, copy `composer.json` to
-`composer.local.json`, point its repositories at `../sunrice-cms` and `../sunrice-commerce` as
+`composer.local.json`, point its repositories at `../sunrice/packages/admin`, `../sunrice/packages/cms` and `../sunrice-commerce` as
 `path` repositories, and run `COMPOSER=composer.local.json composer install`.
 
 ## License

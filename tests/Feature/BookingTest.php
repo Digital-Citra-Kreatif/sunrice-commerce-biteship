@@ -69,8 +69,8 @@ it('waits for the order page when booking is manual, and books once', function (
     expect($order->shipments()->count())->toBe(0);
 
     actingAsUserWith(['commerce.orders.view', 'commerce.shipments.manage']);
-    $this->post("/cms/commerce/orders/{$order->id}/biteship/book")->assertRedirect()->assertSessionHasNoErrors();
-    $this->post("/cms/commerce/orders/{$order->id}/biteship/book")->assertSessionHasErrors('biteship');
+    $this->post("/admin/commerce/orders/{$order->id}/biteship/book")->assertRedirect()->assertSessionHasNoErrors();
+    $this->post("/admin/commerce/orders/{$order->id}/biteship/book")->assertSessionHasErrors('biteship');
 
     expect($order->shipments()->count())->toBe(1);
     Http::assertSentCount(1);
@@ -83,7 +83,7 @@ it('shows Biteship refusals on the order page and timeline', function () {
     Http::fake(['api.biteship.com/v1/orders' => Http::response(['success' => false, 'error' => 'Insufficient balance', 'code' => 40002001], 400)]);
 
     actingAsUserWith(['commerce.orders.view', 'commerce.shipments.manage']);
-    $this->post("/cms/commerce/orders/{$order->id}/biteship/book")->assertSessionHasErrors(['biteship' => 'Biteship: Insufficient balance']);
+    $this->post("/admin/commerce/orders/{$order->id}/biteship/book")->assertSessionHasErrors(['biteship' => 'Biteship: Insufficient balance']);
 
     expect($order->shipments()->count())->toBe(0)
         ->and($order->events()->pluck('message')->implode("\n"))->toContain('Insufficient balance');
@@ -100,10 +100,10 @@ it('cancels a booking and books it again on the same shipment', function () {
     $shipment = $order->shipments()->sole();
 
     actingAsUserWith(['commerce.orders.view', 'commerce.shipments.manage']);
-    $this->post("/cms/commerce/orders/{$order->id}/biteship/{$shipment->id}/cancel")->assertSessionHasNoErrors();
+    $this->post("/admin/commerce/orders/{$order->id}/biteship/{$shipment->id}/cancel")->assertSessionHasNoErrors();
     expect($shipment->fresh()->status)->toBe('cancelled');
 
-    $this->post("/cms/commerce/orders/{$order->id}/biteship/book")->assertSessionHasNoErrors();
+    $this->post("/admin/commerce/orders/{$order->id}/biteship/book")->assertSessionHasNoErrors();
 
     expect($order->shipments()->count())->toBe(1)
         ->and($shipment->fresh())->status->toBe('shipped')->tracking_number->toBe('JNE0002')
@@ -115,7 +115,7 @@ it('needs the shipments permission', function () {
     $order = biteshipOrderPlaced();
     actingAsUserWith(['commerce.orders.view']);
 
-    $this->post("/cms/commerce/orders/{$order->id}/biteship/book")->assertForbidden();
+    $this->post("/admin/commerce/orders/{$order->id}/biteship/book")->assertForbidden();
 });
 
 it('follows the booking through webhooks, trusting only the API', function () {
@@ -179,7 +179,7 @@ it('cancels only until pickup, and notes a price change at pickup', function () 
 
     $this->postJson('/biteship/webhook', ['event' => 'order.price', 'order_id' => 'bs_order_1'])->assertOk();
     actingAsUserWith(['commerce.orders.view', 'commerce.shipments.manage']);
-    $this->post("/cms/commerce/orders/{$order->id}/biteship/{$shipment->id}/cancel")->assertSessionHasErrors('biteship');
+    $this->post("/admin/commerce/orders/{$order->id}/biteship/{$shipment->id}/cancel")->assertSessionHasErrors('biteship');
 
     expect($shipment->fresh()->cost)->toBe(15000)
         ->and($order->events()->pluck('message')->implode("\n"))->toContain('Rp12.500')->toContain('Rp15.000');
