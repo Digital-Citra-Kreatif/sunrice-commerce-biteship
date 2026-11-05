@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
-use Sunrice\Actions\Entries\PublishTranslation;
-use Sunrice\Actions\Entries\SaveDraft;
+use Sunrice\Admin\Actions\Permissions\SyncPermissions;
+use Sunrice\Admin\Panel;
+use Sunrice\Cms\Actions\Entries\CreateEntry;
+use Sunrice\Cms\Actions\Entries\PublishEntry;
+use Sunrice\Cms\Models\Collection;
 use Sunrice\Commerce\Cart\CartView;
 use Sunrice\Commerce\Cart\Models\Cart;
 use Sunrice\Commerce\Catalog\Actions\ScaffoldStore;
@@ -18,24 +21,20 @@ use Sunrice\Commerce\Settings\StoreSettings;
 use Sunrice\Commerce\Shipping\Models\ShippingMethod;
 use Sunrice\Commerce\Shipping\Models\ShippingZone;
 use Sunrice\CommerceBiteship\Tests\TestCase;
-use Sunrice\Models\Blueprint;
-use Sunrice\Models\Collection;
-use Sunrice\Models\Entry;
-use Sunrice\Support\Locales;
 use Workbench\App\Commerce\TestTransfer;
 use Workbench\App\Models\User;
 
 uses(TestCase::class)->in('Feature', 'Unit');
 
-/** Sign in to the admin as a user whose role has these permissions (plus sunrice.access-admin). */
+/** Sign in to the admin as a user whose role has these permissions (plus the panel's access). */
 function actingAsUserWith(array $permissions, string $email = 'staff@example.com'): User
 {
-    test()->artisan('sunrice:sync-permissions');
-    $role = Role::findOrCreate('Role '.md5($email), config('sunrice.auth.guard', 'web'));
-    $role->givePermissionTo(['sunrice.access-admin', ...$permissions]);
+    app(SyncPermissions::class)->handle();
+    $role = Role::findOrCreate('Role '.md5($email), 'web');
+    $role->givePermissionTo([Panel::ACCESS, ...$permissions]);
     $user = User::query()->create(['name' => 'Staff', 'email' => $email, 'password' => bcrypt('password')]);
     $user->assignRole($role);
-    test()->actingAs($user, config('sunrice.auth.guard', 'web'));
+    test()->actingAs($user, 'web');
 
     return $user;
 }
@@ -51,14 +50,11 @@ function biteshipStore(array $settings = []): ShippingMethod
 {
     (new RegionImporter(__DIR__.'/Fixtures/regions'))->import(4);
     app(ScaffoldStore::class)->handle();
-    $collection = Collection::query()->where('handle', 'products')->first() ?? Collection::query()->create(['handle' => 'products', 'title' => 'Products', 'settings' => ['route' => 'products/{slug}'],
-        'blueprint_id' => Blueprint::query()->create(['handle' => 'product', 'title' => 'Product', 'fields' => [['handle' => 'product', 'type' => 'commerce_product', 'label' => 'Product']]])->id]);
-    $entry = Entry::query()->create(['collection_id' => $collection->id, 'status' => 'draft', 'sort_order' => 0]);
-    $translation = $entry->translations()->create(['locale' => Locales::main(), 'collection_id' => $collection->id, 'title' => 'Mug', 'slug' => 'mug', 'data' => [], 'seo' => []]);
-    app(SaveDraft::class)->handle($translation, ['title' => 'Mug', 'slug' => 'mug', 'data' => ['product' => ['variants' => [
+    $products = Collection::query()->where('handle', 'products')->firstOrFail();
+    $mug = app(CreateEntry::class)->handle($products, ['title' => 'Mug', 'slug' => 'mug', 'data' => ['product' => ['variants' => [
         ['id' => 'mug', 'sku' => 'MUG', 'price' => 50000, 'weight' => 500, 'length' => 100, 'width' => 80, 'height' => 120, 'track_stock' => true, 'initial_stock' => 5],
     ]]]]);
-    app(PublishTranslation::class)->handle($translation->fresh());
+    app(PublishEntry::class)->handle($mug->fresh());
 
     $zone = ShippingZone::query()->create(['name' => 'Indonesia']);
     $zone->regions()->create(['country' => 'ID']);

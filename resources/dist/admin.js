@@ -1,25 +1,29 @@
 /*
  * Sunrice Commerce Biteship: the order page's Biteship panel. Plain
- * JavaScript on Sunrice's admin API (window.Sunrice), no build step.
+ * JavaScript on the panel's runtime (window.Sunrice.modules, version 3),
+ * no build step; loaded after commerce's bundle (BiteshipPlugin).
  * Props: { order, data } with data from BiteshipServiceProvider::panel().
  */
 (function () {
     'use strict';
 
     function Panel(props) {
-        var S = window.Sunrice;
-        var h = S.React.createElement;
-        var Button = S.ui.Button;
-        var Badge = S.ui.Badge;
+        var M = window.Sunrice.modules;
+        var React = M['react'];
+        var inertia = M['@inertiajs/react'];
+        var ui = M['@imajiner/admin-sdk/ui'];
+        var h = React.createElement;
+        var Button = ui.Button;
+        var Badge = ui.Badge;
         var data = props.data || {};
-        var page = S.inertia.usePage();
+        var page = inertia.usePage();
         var error = page.props.errors && page.props.errors.biteship;
-        var busy = S.React.useState(false);
+        var busy = React.useState(false);
 
         function post(url, confirmText) {
             if (confirmText && !window.confirm(confirmText)) return;
             busy[1](true);
-            S.inertia.router.post(url, {}, { preserveScroll: true, onFinish: function () { busy[1](false); } });
+            inertia.router.post(url, {}, { preserveScroll: true, onFinish: function () { busy[1](false); } });
         }
 
         function row(label, value) {

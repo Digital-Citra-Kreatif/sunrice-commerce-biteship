@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia;
 use Sunrice\Commerce\Health\HealthResult;
 use Sunrice\Commerce\Orders\Actions\MarkOrderPaid;
 use Sunrice\Commerce\Orders\Actor;
@@ -34,7 +36,7 @@ it('prints a shipping label with the waybill, both addresses and the COD amount'
     $shipment = $order->shipments()->sole();
     actingAsUserWith(['commerce.orders.view', 'commerce.shipments.manage']);
 
-    $this->get("/cms/commerce/orders/{$order->id}/biteship/{$shipment->id}/label")
+    $this->get("/admin/commerce/orders/{$order->id}/biteship/{$shipment->id}/label")
         ->assertOk()->assertHeader('Content-Type', 'application/pdf');
 
     $html = app(Labels::class)->html($shipment->fresh());
@@ -52,7 +54,7 @@ it('gives the order page panel its booking and buttons', function () {
 
     expect($panel['data'])->toMatchArray(['testing' => true, 'can_book' => false, 'can_cancel' => true])
         ->and($panel['data']['booking'])->toMatchArray(['waybill' => 'JNE0001', 'order_id' => 'bs_order_1', 'status_label' => 'Dipesan, mencari kurir'])
-        ->and($panel['data']['urls']['label'])->toEndWith("/cms/commerce/orders/{$order->id}/biteship/{$order->shipments()->value('id')}/label");
+        ->and($panel['data']['urls']['label'])->toEndWith("/admin/commerce/orders/{$order->id}/biteship/{$order->shipments()->value('id')}/label");
 });
 
 it('checks the key, the origin and Testing Mode in production', function () {
@@ -66,4 +68,15 @@ it('checks the key, the origin and Testing Mode in production', function () {
 
     config(['commerce-biteship.api_key' => 'biteship_live.key']);
     expect($check->run())->status->toBe(HealthResult::WARNING)->message->toContain('published');
+});
+
+it('loads its order panel script after commerce\'s bundle, on commerce\'s pages', function () {
+    $this->beforeApplicationDestroyed(fn () => File::deleteDirectory(public_path('vendor/commerce-biteship')));   // other tests check it isn't published
+    $this->artisan('vendor:publish', ['--tag' => 'commerce-biteship-assets', '--force' => true])->assertSuccessful();
+    actingAsUserWith(['commerce.orders.view']);
+
+    $this->get('/admin/commerce/orders')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('sunrice.bundles', fn ($bundles) => collect($bundles)->contains(fn (array $b) => $b['id'] === 'commerce-biteship'
+            && str_contains((string) $b['module'], 'vendor/commerce-biteship/admin.js?v=') && $b['pages'] === [] && $b['extends'] === ['Commerce/'])));
+    expect(file_get_contents(public_path('vendor/commerce-biteship/admin.js')))->toContain("registerOrderPanel('biteship'");
 });

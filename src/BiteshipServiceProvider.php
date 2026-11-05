@@ -15,7 +15,6 @@ use Sunrice\Commerce\Orders\Events\OrderPlaced;
 use Sunrice\Commerce\Orders\Models\Order;
 use Sunrice\Commerce\Support\MoneyFormatter;
 use Sunrice\CommerceBiteship\Listeners\BookWhenReady;
-use Sunrice\Facades\Sunrice;
 
 class BiteshipServiceProvider extends PackageServiceProvider
 {
@@ -47,14 +46,11 @@ class BiteshipServiceProvider extends PackageServiceProvider
         Event::listen(OrderPaid::class, BookWhenReady::class);
         Event::listen(OrderPlaced::class, BookWhenReady::class);
 
-        Sunrice::registerAdminScript('vendor/commerce-biteship/admin.js');
-        $this->publishes([__DIR__.'/../resources/dist' => public_path('vendor/commerce-biteship')], 'commerce-biteship-assets');
+        // The admin script (BiteshipPlugin's bundle); sunrice:assets publishes it too.
+        $this->publishes([__DIR__.'/../resources/dist' => public_path('vendor/commerce-biteship')], ['commerce-biteship-assets', 'laravel-assets']);
 
         if (! $this->app->routesAreCached()) {
             Route::group([], __DIR__.'/../routes/webhooks.php');
-            Sunrice::adminRoutes(function (): void {
-                require __DIR__.'/../routes/admin.php';
-            });
         }
     }
 
