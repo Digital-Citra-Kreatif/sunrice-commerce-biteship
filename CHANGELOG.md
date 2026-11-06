@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.1.0 (2026-11-06)
+
+The first release. Needs Sunrice Commerce 0.1 (`sunrice/commerce`, on `sunrice/admin` and `sunrice/cms` 0.6),
+PHP 8.4 and Laravel 13.
+
 - Ported to the split Sunrice: commerce runs on the panel (`sunrice/admin`) and the CMS
   (`sunrice/cms`). `BiteshipPlugin` (add it after commerce in the panel provider) registers the
   order page's booking routes and the Biteship panel's script, loaded after commerce's bundle on

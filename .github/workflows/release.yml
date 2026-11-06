@@ -1,0 +1,67 @@
+name: release
+
+# Tags a release from the Actions tab (Run workflow): makes the annotated tag
+# v<version> on a commit of main whose CHANGELOG.md has a "## <version> (…)"
+# section. Packagist reads the tag from GitHub. It's the same as
+# `git tag -a v<version> <commit> && git push origin v<version>`. Running it
+# again for a tag that's already on the same commit does nothing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version, without the v (0.1.0)
+        required: true
+        type: string
+      commit:
+        description: Commit of main to tag (empty for the latest)
+        required: false
+        type: string
+
+concurrency:
+  group: release
+
+jobs:
+  tag:
+    name: tag v${{ inputs.version }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Tag
+        env:
+          VERSION: ${{ inputs.version }}
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          set -euo pipefail
+          if ! [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::\"${VERSION}\" isn't a version like 0.1.0 (without the v)."; exit 1
+          fi
+          tag="v${VERSION}"
+          if ! commit="$(git rev-parse --verify --quiet "${COMMIT:-origin/main}^{commit}")"; then
+            echo "::error::There's no commit ${COMMIT} here."; exit 1
+          fi
+          if ! git merge-base --is-ancestor "${commit}" origin/main; then
+            echo "::error::${commit} isn't on main."; exit 1
+          fi
+          if ! grep -qE "^## ${VERSION//./[.]} [(]" <<< "$(git show "${commit}:CHANGELOG.md")"; then
+            echo "::error::CHANGELOG.md at ${commit} has no \"## ${VERSION} (date)\" section."; exit 1
+          fi
+          if existing="$(git rev-parse --verify --quiet "refs/tags/${tag}^{commit}")"; then
+            if [ "${existing}" != "${commit}" ]; then
+              echo "::error::${tag} is already on ${existing}, not ${commit}. Delete it first to move it."; exit 1
+            fi
+            echo "::notice::${tag} is already on ${commit}."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${tag}" "${commit}" -m "${GITHUB_REPOSITORY#*/} ${VERSION}"
+          git push origin "refs/tags/${tag}"
+          echo "::notice::Tagged ${commit} as ${tag}."
