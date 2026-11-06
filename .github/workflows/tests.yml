@@ -27,10 +27,6 @@ jobs:
           extensions: mbstring, dom, sqlite3, pdo_sqlite, gd, intl
 
       - name: Install dependencies
-        # sunrice/cms and sunrice/commerce come from their GitHub repositories until they are on
-        # Packagist; set the COMPOSER_AUTH secret (a token with read access) while they are private.
-        env:
-          COMPOSER_AUTH: ${{ secrets.COMPOSER_AUTH }}
         run: composer install --no-interaction --prefer-dist
 
       - name: Lint

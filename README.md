@@ -259,11 +259,7 @@ composer lint      # Pint
 composer analyse   # Larastan
 ```
 
-`sunrice/admin`, `sunrice/cms` and `sunrice/commerce` come from their GitHub repositories until they are on
-Packagist. While those are private, installing needs a GitHub token that can read them: locally
-`composer config --global github-oauth.github.com <token>`, and in this repository's CI the
-`COMPOSER_AUTH` secret (Settings → Secrets and variables → Actions), e.g.
-`{"github-oauth": {"github.com": "<token>"}}`. To work against local checkouts next to this one, copy `composer.json` to
+`sunrice/admin`, `sunrice/cms` and `sunrice/commerce` come from Packagist. To work against local checkouts next to this one, copy `composer.json` to
 `composer.local.json`, point its repositories at `../sunrice/packages/admin`, `../sunrice/packages/cms` and `../sunrice-commerce` as
 `path` repositories, and run `COMPOSER=composer.local.json composer install`.
 

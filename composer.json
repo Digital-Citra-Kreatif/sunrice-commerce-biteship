@@ -11,31 +11,14 @@
         "biteship",
         "indonesia"
     ],
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/Digital-Citra-Kreatif/sunrice-admin",
-            "no-api": true
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/Digital-Citra-Kreatif/sunrice-cms",
-            "no-api": true
-        },
-        {
-            "type": "vcs",
-            "url": "https://github.com/Digital-Citra-Kreatif/sunrice-commerce",
-            "no-api": true
-        }
-    ],
     "require": {
         "php": "^8.4",
         "illuminate/contracts": "^13.0",
         "illuminate/http": "^13.0",
         "illuminate/support": "^13.0",
         "spatie/laravel-package-tools": "^1.93",
-        "sunrice/admin": "^0.6 || dev-main",
-        "sunrice/commerce": "^1.0 || dev-main"
+        "sunrice/admin": "^0.6",
+        "sunrice/commerce": "^0.1"
     },
     "require-dev": {
         "larastan/larastan": "^3.0",
@@ -73,7 +56,5 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true
         }
-    },
-    "minimum-stability": "dev",
-    "prefer-stable": true
+    }
 }
