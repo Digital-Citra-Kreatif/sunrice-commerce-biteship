@@ -2,9 +2,9 @@
 
 ## Unreleased
 
-## 0.1.0 (2026-11-06)
+## 0.1.0 (2026-11-07)
 
-The first release. Needs Sunrice Commerce 0.1 (`sunrice/commerce`, on `sunrice/admin` and `sunrice/cms` 0.6),
+The first release. Needs Sunrice Commerce 0.1 or 0.2 (`sunrice/commerce`, on `sunrice/admin` and `sunrice/cms` 0.6 or 0.7),
 PHP 8.4 and Laravel 13.
 
 - Ported to the split Sunrice: commerce runs on the panel (`sunrice/admin`) and the CMS
