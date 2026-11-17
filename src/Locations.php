@@ -18,10 +18,20 @@ class Locations
 {
     public function __construct(protected Client $client) {}
 
-    /** @return array{postal_code: int|null, area_id: string|null, latitude: float|null, longitude: float|null} */
-    public function origin(Address $store): array
+    /**
+     * Where a shipment leaves from. The store address may be overridden by
+     * config (commerce-biteship.origin.*); another origin (a branch an
+     * extension chose, $store false) is taken as it is: its own postal code
+     * and map point.
+     *
+     * @return array{postal_code: int|null, area_id: string|null, latitude: float|null, longitude: float|null}
+     */
+    public function origin(Address $store, bool $isStore = true): array
     {
         $point = $this->locate($store);
+        if (! $isStore) {
+            return $point;
+        }
         $postal = config('commerce-biteship.origin.postal_code');
         $lat = config('commerce-biteship.origin.latitude');
         $lng = config('commerce-biteship.origin.longitude');
