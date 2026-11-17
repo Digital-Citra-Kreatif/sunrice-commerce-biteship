@@ -7,9 +7,13 @@ use Illuminate\Support\Facades\Http;
 use Sunrice\Commerce\Commerce;
 use Sunrice\Commerce\Orders\Actions\MarkOrderPaid;
 use Sunrice\Commerce\Orders\Actor;
+use Sunrice\Commerce\Shipping\ShippingOrigins;
 
 /** A cart an extension ships from a branch (commerce's shipping origins): its own postal code and map point, not the store's. */
 beforeEach(function () {
+    if (! class_exists(ShippingOrigins::class)) {
+        $this->markTestSkipped('Needs sunrice/commerce with shipping origins (Commerce::shippingOriginUsing()).');
+    }
     $this->method = biteshipStore();
     app(Commerce::class)->shippingOriginUsing(fn () => ['name' => 'Cabang Dago', 'phone' => '0811000222', 'line1' => 'Jl. Dago 10', 'postal_code' => '40135',
         'country' => 'ID', 'latitude' => '-6.885', 'longitude' => '107.613']);
