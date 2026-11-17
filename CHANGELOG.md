@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Ships from a branch**: with sunrice/commerce's shipping origins (`Commerce::shippingOriginUsing()`, next release), rates are quoted from the cart's origin, with its own postal code and map point (so GoSend and Grab can be offered), and the pickup is booked there with its name and phone (`Order::shippingOrigin()`). The `commerce-biteship.origin.*` overrides apply to the store address only. Nothing changes without an extension's origin, or on commerce 0.2.
+
 ## 0.1.0 (2026-11-07)
 
 The first release. Needs Sunrice Commerce 0.1 or 0.2 (`sunrice/commerce`, on `sunrice/admin` and `sunrice/cms` 0.6 or 0.7),
