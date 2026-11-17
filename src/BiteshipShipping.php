@@ -146,10 +146,11 @@ class BiteshipShipping implements BooksShipments, ShippingMethodType, TracksShip
         $service = (string) ($order->shipping_method['service'] ?? '');
         [$courier, $type] = array_pad(explode('.', $service, 2), 2, '');
         $method = ShippingMethod::query()->find($order->shipping_method['method_id'] ?? null);
-        // Where the rate was quoted from: a branch an extension chose (commerce ≥ 0.3), else the store.
-        // @phpstan-ignore function.alreadyNarrowedType (commerce 0.2 has no Order::shippingOrigin())
-        $branch = method_exists($order, 'shippingOrigin') && $order->meta('shipping_origin') !== null;
-        $store = $branch ? $order->shippingOrigin() : Address::fromArray((array) $this->settings->get('general.address', []));
+        // Where the rate was quoted from: a branch an extension chose (commerce's shipping origins keep it
+        // in meta.shipping_origin, Order::shippingOrigin()), else the store.
+        $origin = $order->meta('shipping_origin');
+        $branch = is_array($origin) && $origin !== [];
+        $store = Address::fromArray($branch ? $origin : (array) $this->settings->get('general.address', []));
         $to = $order->shippingAddress();
         if ($courier === '' || $type === '' || $to === null) {
             throw new BiteshipException('The order has no Biteship service or shipping address.');
