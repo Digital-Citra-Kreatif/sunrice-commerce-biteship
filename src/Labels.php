@@ -6,8 +6,8 @@ namespace Sunrice\CommerceBiteship;
 
 use Sunrice\Commerce\Documents\DocumentRenderer;
 use Sunrice\Commerce\Orders\Models\Shipment;
-use Sunrice\Commerce\Shipping\Models\ShippingMethod;
 use Sunrice\Commerce\Settings\StoreSettings;
+use Sunrice\Commerce\Shipping\Models\ShippingMethod;
 use Sunrice\Commerce\Support\Address;
 use Sunrice\Commerce\Support\MoneyFormatter;
 use Sunrice\CommerceBiteship\Label\Code128;
