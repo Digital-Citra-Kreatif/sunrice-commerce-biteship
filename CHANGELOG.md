@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.2.0 (2026-11-19)
+
+Works with Sunrice Commerce 0.1, 0.2 or 0.3; shipping from a branch and order scopes need commerce
+0.3. Update with `composer require sunrice/commerce-biteship:^0.2`. The new **Shipping label** setting
+defaults to the store's label, so nothing changes until you choose Biteship's.
+
+- Fix: the order page's Biteship panel and booking use the newest Biteship shipment. Commerce orders
+  an order's shipments by id, so `latest('id')` still found the oldest one.
 - **Hourly tracking applies the whole booking**: `commerce:tick`'s check (`track()`) now updates the
   shipment as a webhook does. Before, it only noticed deliveries, so with a missed webhook a
   cancelled, rejected, returned or repriced booking kept its old status on the order page.
@@ -19,7 +27,7 @@
   pages do. Before, a scoped staff member could reach them by order id.
 - **Labels from a branch**: a label's sender is the branch the pickup was booked at (the order's
   shipping origin), not always the store address.
-- **Ships from a branch**: with sunrice/commerce's shipping origins (`Commerce::shippingOriginUsing()`, next release), rates are quoted from the cart's origin, with its own postal code and map point (so GoSend and Grab can be offered), and the pickup is booked there with its name and phone (`Order::shippingOrigin()`). The `commerce-biteship.origin.*` overrides apply to the store address only. Nothing changes without an extension's origin, or on commerce 0.2.
+- **Ships from a branch**: with sunrice/commerce's shipping origins (`Commerce::shippingOriginUsing()`, commerce 0.3), rates are quoted from the cart's origin, with its own postal code and map point (so GoSend and Grab can be offered), and the pickup is booked there with its name and phone (`Order::shippingOrigin()`). The `commerce-biteship.origin.*` overrides apply to the store address only. Nothing changes without an extension's origin, or on commerce 0.2.
 
 ## 0.1.0 (2026-11-07)
 
