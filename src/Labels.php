@@ -7,19 +7,42 @@ namespace Sunrice\CommerceBiteship;
 use Sunrice\Commerce\Documents\DocumentRenderer;
 use Sunrice\Commerce\Orders\Models\Shipment;
 use Sunrice\Commerce\Settings\StoreSettings;
+use Sunrice\Commerce\Shipping\Models\ShippingMethod;
 use Sunrice\Commerce\Support\Address;
 use Sunrice\Commerce\Support\MoneyFormatter;
 use Sunrice\CommerceBiteship\Label\Code128;
 
 /**
- * Shipping labels for Biteship shipments (Biteship has no label API):
+ * Shipping labels for Biteship shipments, drawn by the store (or Biteship's own,
+ * see biteshipUrl()):
  * courier, waybill barcode, routing code, both addresses, weight, COD and
  * contents, on A6 paper. The sender is where the pickup was booked: the
  * order's branch when an extension chose one, else the store.
  */
 class Labels
 {
-    public function __construct(protected DocumentRenderer $renderer, protected StoreSettings $settings) {}
+    public function __construct(protected DocumentRenderer $renderer, protected StoreSettings $settings, protected Client $client) {}
+
+    /**
+     * Biteship's own label for the booking, when the order's method asks for it ("Shipping label:
+     * Biteship's"): its PDF's URL, or null for the store's label (the method doesn't ask for it,
+     * or Biteship refused, e.g. a plan without the Shipping Label API: reported, not thrown).
+     */
+    public function biteshipUrl(Shipment $shipment): ?string
+    {
+        $method = ShippingMethod::query()->find($shipment->order->shipping_method['method_id'] ?? null);
+        $id = (string) ($shipment->meta['biteship']['order_id'] ?? '');
+        if ($method?->setting('label') !== 'biteship' || $id === '') {
+            return null;
+        }
+        try {
+            return $this->client->shippingLabel($id, array_filter(['paper_size' => $method->setting('label_paper')]));
+        } catch (BiteshipException $e) {
+            report($e);
+
+            return null;
+        }
+    }
 
     public function pdf(Shipment $shipment): string
     {

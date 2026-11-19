@@ -9,9 +9,9 @@
   the waybill as its tracking number.
 - **Tracking**: Biteship's webhooks (and commerce's hourly check) move the shipment to in transit
   and delivered.
-- **Shipping labels**: a printable A6 label with the waybill barcode, routing code, both
-  addresses, weight, contents and the COD amount. Biteship has no label API, so the package draws
-  its own.
+- **Shipping labels**: a printable A6 label drawn by the store, with the waybill barcode, routing
+  code, both addresses, weight, contents and the COD amount. Or Biteship's own label, from its
+  Shipping Label API (Biteship's Grow plan or higher).
 
 ## Contents
 
@@ -122,6 +122,8 @@ Settings → Store → Shipping → a zone → add a method of the type **Bitesh
 | Book the pickup | **From the order page**, or **When the order is paid** (cash on delivery: when it is placed; with a deposit, once the balance is paid too) |
 | Hand over | The courier picks up at the store, or you drop parcels off at the courier |
 | Insure parcels for their value | Adds Biteship's insurance to rates and bookings |
+| Shipping label | **The store's label** (A6, drawn by the package; the default) or **Biteship's label** (see [Booking, cancelling and labels](#booking-cancelling-and-labels)) |
+| Biteship label paper | For Biteship's label: 10 × 15 cm (Biteship's default), 8 × 10 cm or A4 |
 | What you ship | Biteship's item category (fashion, food and drink, electronics…); food and drink gets instant couriers assigned faster |
 
 The usual method settings (title, minimum subtotal, maximum weight…) apply too.
@@ -151,9 +153,17 @@ booking (status, courier, waybill, driver, price, live tracking) and has the but
 - **Book pickup**: for orders whose method books from the order page, or when an automatic booking
   failed. Failures (no balance, an address Biteship can't find) are on the order's timeline and
   on the panel.
-- **Print label**: the shipping label PDF. The sender is where the pickup was booked: the order's
-  branch when an extension chose one, else the store. Override the template with
-  `resources/views/vendor/commerce-biteship/label.blade.php`.
+- **Print label**: the shipping label PDF.
+  - **The store's label** (default): the sender is where the pickup was booked (the order's branch
+    when an extension chose one, else the store). Override the template with
+    `resources/views/vendor/commerce-biteship/label.blade.php`.
+  - **Biteship's label** (method setting **Shipping label**): the button opens the PDF Biteship
+    makes for the booking, on the chosen paper. Biteship's other label options (what it shows or
+    hides) come from your Biteship dashboard's label settings. It needs Biteship's Grow plan or
+    higher: if Biteship refuses (plan, booking not found), the store's label is printed instead
+    and the error is reported to the application log. Biteship's label is a snapshot of the
+    booking when it was first made.
+  - Neither replaces commerce's packing slip (Documents), which stays as it is.
 - **Refresh**: fetches the booking now.
 - **Cancel booking**: until the courier has picked the parcel up (Biteship's rule), cancels it at
   Biteship; the shipment is marked cancelled and **Book again** books it anew on the same shipment
@@ -199,7 +209,14 @@ most make the store ask Biteship again. Statuses move the shipment:
 Every change is on the order's timeline, including a new price when the courier weighs the parcel
 differently at pickup (`order.price`; the shipment's cost follows). Some couriers issue the
 waybill only after pickup; it arrives with the `order.waybill_id` webhook. Without webhooks,
-`commerce:tick` still asks Biteship about each open booking once an hour.
+`commerce:tick` still asks Biteship about each open booking once an hour and applies the answer as
+a webhook would (status, waybill, price and the timeline), so a missed webhook doesn't leave a
+cancelled or returned booking looking active.
+
+Tracking reads the booking from the Order API (`GET /v1/orders/{id}`, its courier history), not
+Biteship's Tracking API (`GET /v1/trackings/{id}`), which counts against the monthly Tracking quota
+on live keys. Shipments with a waybill you entered yourself (not booked through Biteship) aren't
+tracked by this package.
 
 ## Testing Mode
 

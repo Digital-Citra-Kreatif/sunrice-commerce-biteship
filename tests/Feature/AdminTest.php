@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia;
@@ -62,6 +63,33 @@ it('answers 404 for an order outside the staff member\'s scope', function () {
     $this->get("/admin/commerce/orders/{$order->id}/biteship/{$shipment->id}/label")->assertNotFound();
     $this->post("/admin/commerce/orders/{$order->id}/biteship/{$shipment->id}/cancel")->assertNotFound();
     $this->post("/admin/commerce/orders/{$order->id}/biteship/book")->assertNotFound();
+});
+
+it('prints Biteship\'s own label when the method asks for it, and the store\'s when Biteship refuses', function () {
+    $this->method->update(['settings' => [...$this->method->settings, 'label' => 'biteship', 'label_paper' => 'a4']]);
+    $order = paidBiteshipOrder();
+    $shipment = $order->shipments()->sole();
+    actingAsUserWith(['commerce.orders.view', 'commerce.shipments.manage']);
+    $url = "/admin/commerce/orders/{$order->id}/biteship/{$shipment->id}/label";
+
+    Http::fake(['api.biteship.com/v1/orders/bs_order_1/shipping_labels*' => Http::sequence()
+        ->push(['success' => true, 'file_url' => 'https://files.biteship.com/labels/bs_order_1.pdf'])
+        // A plan without the Shipping Label API: the store's own label, not an error.
+        ->push(['success' => false, 'error' => 'Your plan does not include this feature', 'code' => 40301000], 403)]);
+
+    $this->get($url)->assertRedirect('https://files.biteship.com/labels/bs_order_1.pdf');
+    Http::assertSent(fn (Request $r) => str_contains($r->url(), '/v1/orders/bs_order_1/shipping_labels') && str_contains($r->url(), 'paper_size=a4'));
+
+    $this->get($url)->assertOk()->assertHeader('Content-Type', 'application/pdf');
+});
+
+it('prints the store\'s label by default without asking Biteship', function () {
+    $order = paidBiteshipOrder();
+    $shipment = $order->shipments()->sole();
+    actingAsUserWith(['commerce.orders.view', 'commerce.shipments.manage']);
+
+    $this->get("/admin/commerce/orders/{$order->id}/biteship/{$shipment->id}/label")->assertOk()->assertHeader('Content-Type', 'application/pdf');
+    Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'shipping_labels'));
 });
 
 it('gives the order page panel its booking and buttons', function () {

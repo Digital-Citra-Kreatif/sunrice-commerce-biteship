@@ -47,6 +47,9 @@ class BiteshipShipping implements BooksShipments, ShippingMethodType, TracksShip
         'hobby' => 'Hobby', 'collection' => 'Collectibles', 'sparepart' => 'Spare parts', 'groceries' => 'Groceries', 'frozen_food' => 'Frozen food',
     ];
 
+    /** Paper sizes of Biteship's own label (Shipping Label API). */
+    public const LABEL_PAPER = ['10x15cm' => '10 × 15 cm', '8x10cm' => '8 × 10 cm', 'a4' => 'A4'];
+
     /** Biteship collects at most this much cash on delivery. */
     public const MAX_COD = 15_000_000;
 
@@ -76,6 +79,12 @@ class BiteshipShipping implements BooksShipments, ShippingMethodType, TracksShip
                 ['value' => 'drop_off', 'label' => 'I drop parcels off at the courier'],
             ]]],
             ['handle' => 'insurance', 'type' => 'toggle', 'label' => 'Insure parcels for their value'],
+            ['handle' => 'label', 'type' => 'select', 'label' => 'Shipping label', 'instructions' => 'Biteship\'s label needs Biteship\'s Grow plan or higher; if Biteship refuses, the store\'s label is printed.',
+                'config' => ['options' => [
+                    ['value' => 'store', 'label' => 'The store\'s label (A6, drawn by the store)'],
+                    ['value' => 'biteship', 'label' => 'Biteship\'s label (from Biteship)'],
+                ]]],
+            ['handle' => 'label_paper', 'type' => 'select', 'label' => 'Biteship label paper', 'config' => ['options' => array_map(fn ($value, $label) => ['value' => $value, 'label' => $label], array_keys(self::LABEL_PAPER), self::LABEL_PAPER)]],
             ['handle' => 'category', 'type' => 'select', 'label' => 'What you ship', 'instructions' => 'Tells the courier how to handle parcels; food and drink gets instant couriers assigned faster.',
                 'config' => ['options' => array_map(fn ($value, $label) => ['value' => $value, 'label' => $label], array_keys(self::CATEGORIES), self::CATEGORIES)]],
         ];
@@ -89,6 +98,8 @@ class BiteshipShipping implements BooksShipments, ShippingMethodType, TracksShip
             'booking' => ['nullable', 'in:manual,paid'],
             'collection' => ['nullable', 'in:pickup,drop_off'],
             'category' => ['nullable', 'in:'.implode(',', array_keys(self::CATEGORIES))],
+            'label' => ['nullable', 'in:store,biteship'],
+            'label_paper' => ['nullable', 'in:'.implode(',', array_keys(self::LABEL_PAPER))],
         ];
     }
 
@@ -211,11 +222,14 @@ class BiteshipShipping implements BooksShipments, ShippingMethodType, TracksShip
             return new TrackingInfo((string) ($shipment->meta['biteship']['status'] ?? 'unknown'));
         }
         $booking = $this->client->order($id);
-        $status = (string) ($booking['status'] ?? 'unknown');
+        // Everything a webhook would bring (status, waybill, price, timeline), so a missed webhook
+        // still cancels, returns or reprices the shipment, not only marks it delivered.
+        app(Bookings::class)->apply($shipment, $booking);
+        $status = Bookings::status($booking['status'] ?? null) ?: 'unknown';
 
         return new TrackingInfo(Bookings::statusLabel($status), $status === 'delivered', array_map(fn (array $h) => [
             'at' => (string) ($h['updated_at'] ?? ''),
-            'status' => (string) ($h['note'] ?? Bookings::statusLabel((string) ($h['status'] ?? ''))),
+            'status' => (string) ($h['note'] ?? Bookings::statusLabel(Bookings::status($h['status'] ?? null))),
         ], array_values(array_filter((array) ($booking['courier']['history'] ?? []), 'is_array'))));
     }
 

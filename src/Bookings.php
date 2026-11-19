@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Sunrice\CommerceBiteship;
 
+use Illuminate\Support\Str;
 use Sunrice\Commerce\Orders\Actions\UpdateShipment;
 use Sunrice\Commerce\Orders\Actor;
 use Sunrice\Commerce\Orders\Models\Order;
@@ -68,7 +69,7 @@ class Bookings
                 'plate' => $courier['driver_plate_number'] ?? null, 'photo' => $courier['driver_photo_url'] ?? null,
             ]) ?: null,
             'price' => isset($order['price']) ? (int) $order['price'] : null,
-            'status' => $order['status'] ?? null,
+            'status' => self::status($order['status'] ?? null) ?: null,
             'testing' => app(Client::class)->testing() ?: null,
         ], fn ($v) => $v !== null);
     }
@@ -94,6 +95,12 @@ class Bookings
         }
 
         return $refreshed;
+    }
+
+    /** A Biteship status in snake_case, as the API sends it ("picking_up"; its docs also write "pickingUp"). */
+    public static function status(mixed $status): string
+    {
+        return is_string($status) ? Str::snake(trim($status)) : '';
     }
 
     public static function statusLabel(string $status): string

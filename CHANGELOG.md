@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Hourly tracking applies the whole booking**: `commerce:tick`'s check (`track()`) now updates the
+  shipment as a webhook does. Before, it only noticed deliveries, so with a missed webhook a
+  cancelled, rejected, returned or repriced booking kept its old status on the order page.
+- Statuses written in camelCase (`pickingUp`, as Biteship's status docs show them) are read as the
+  API's snake_case (`picking_up`).
+- **Biteship's own label**: a new method setting, **Shipping label**, chooses between the store's
+  A6 label (the default, as before) and Biteship's label from its Shipping Label API
+  (`GET /v1/orders/{id}/shipping_labels`, Biteship's Grow plan or higher), on 10 × 15 cm, 8 × 10 cm
+  or A4 paper (**Biteship label paper**). Print label opens Biteship's PDF; if Biteship refuses,
+  the store's label is printed. `Client::shippingLabel()` returns the PDF's URL.
 - Works with Sunrice Commerce 0.3 (`sunrice/commerce` `^0.1 || ^0.2 || ^0.3`).
 - **Order scopes**: the order page's Biteship buttons and the label (book, cancel, refresh, print)
   answer `404` for an order outside the staff member's scope (commerce 0.3's

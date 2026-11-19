@@ -156,6 +156,34 @@ it('tracks booked shipments from commerce:tick', function () {
         ->and(Shipment::query()->sole()->status)->toBe('delivered');
 });
 
+it('catches a cancellation from commerce:tick when the webhook was missed', function () {
+    $order = biteshipOrderPlaced();
+    Http::fake(['api.biteship.com/v1/orders' => Http::response(biteshipOrder())]);
+    app(MarkOrderPaid::class)->handle($order, Actor::system());
+    Http::fake(['api.biteship.com/v1/orders/bs_order_1' => Http::response(biteshipOrder('cancelled', 'JNE0001', ['price' => 15000]))]);
+
+    $info = app(ShipmentTracker::class)->track(Shipment::query()->sole());
+
+    $shipment = Shipment::query()->sole();
+    expect($info->delivered)->toBeFalse()
+        ->and($shipment->status)->toBe('cancelled')
+        ->and((int) $shipment->cost)->toBe(15000)
+        ->and($shipment->meta['biteship']['status'])->toBe('cancelled')
+        ->and($order->events()->where('type', 'shipment')->where('data->biteship_status', 'cancelled')->exists())->toBeTrue();
+});
+
+it('reads statuses written in camelCase as Biteship\'s snake_case', function () {
+    $order = biteshipOrderPlaced();
+    Http::fake(['api.biteship.com/v1/orders' => Http::response(biteshipOrder())]);
+    app(MarkOrderPaid::class)->handle($order, Actor::system());
+    Http::fake(['api.biteship.com/v1/orders/bs_order_1' => Http::response(biteshipOrder('droppingOff'))]);
+
+    app(ShipmentTracker::class)->track(Shipment::query()->sole());
+
+    expect(Shipment::query()->sole())->status->toBe('in_transit')
+        ->and(Shipment::query()->sole()->meta['biteship']['status'])->toBe('dropping_off');
+});
+
 it('takes over a booking Biteship already has for the reference', function () {
     $order = biteshipOrderPlaced();
     Http::fake([

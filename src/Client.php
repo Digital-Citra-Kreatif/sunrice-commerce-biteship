@@ -53,6 +53,25 @@ class Client
     }
 
     /**
+     * The booking's label as Biteship prints it (Shipping Label API, Biteship's Grow plan or higher):
+     * the PDF's URL. Options are Biteship's label settings (paper_size, items_shown…); left out,
+     * the dashboard's defaults apply.
+     *
+     * @param  array<string, mixed>  $options
+     *
+     * @throws BiteshipException
+     */
+    public function shippingLabel(string $id, array $options = []): string
+    {
+        $url = $this->send('get', '/v1/orders/'.rawurlencode($id).'/shipping_labels', $options)['file_url'] ?? null;
+        if (! is_string($url) || ! str_starts_with($url, 'https://')) {
+            throw new BiteshipException('Biteship returned no label file.');
+        }
+
+        return $url;
+    }
+
+    /**
      * Areas matching a place name ("Sukajadi, Bandung"), best match first.
      *
      * @return array<int, array<string, mixed>>
