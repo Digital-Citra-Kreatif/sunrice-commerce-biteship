@@ -46,6 +46,10 @@ class AdminController
     public function label(Order $order, Shipment $shipment, Labels $labels): Response
     {
         $this->guard($order, $shipment);
+        $url = $labels->biteshipUrl($shipment);
+        if ($url !== null) {
+            return redirect()->away($url);
+        }
 
         return response($labels->pdf($shipment), 200, [
             'Content-Type' => 'application/pdf',
