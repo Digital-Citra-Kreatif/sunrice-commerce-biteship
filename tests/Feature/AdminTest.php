@@ -5,7 +5,9 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia;
+use Sunrice\Commerce\Commerce;
 use Sunrice\Commerce\Health\HealthResult;
+use Sunrice\Commerce\Http\Middleware\ScopeAdminOrders;
 use Sunrice\Commerce\Orders\Actions\MarkOrderPaid;
 use Sunrice\Commerce\Orders\Actor;
 use Sunrice\Commerce\Orders\Models\Order;
@@ -44,6 +46,22 @@ it('prints a shipping label with the waybill, both addresses and the COD amount'
         ->toContain('Rina')->toContain('Jl. Sarijadi 1')->toContain('Toko Mug')->toContain('Jl. Setiabudi 1')
         ->toContain('COD')->toContain('2 × Mug')->toContain('1,00 kg')
         ->toContain('BITESHIP TESTING MODE');
+});
+
+it('answers 404 for an order outside the staff member\'s scope', function () {
+    if (! class_exists(ScopeAdminOrders::class)) {
+        $this->markTestSkipped('Needs sunrice/commerce with admin order scopes (Commerce::scopeAdminOrders()).');
+    }
+    $order = paidBiteshipOrder();
+    $shipment = $order->shipments()->sole();
+    actingAsUserWith(['commerce.orders.view', 'commerce.shipments.manage']);
+    $this->get("/admin/commerce/orders/{$order->id}/biteship/{$shipment->id}/label")->assertOk();
+
+    app(Commerce::class)->scopeAdminOrders(fn ($orders) => $orders->where('id', '!=', $order->id));
+
+    $this->get("/admin/commerce/orders/{$order->id}/biteship/{$shipment->id}/label")->assertNotFound();
+    $this->post("/admin/commerce/orders/{$order->id}/biteship/{$shipment->id}/cancel")->assertNotFound();
+    $this->post("/admin/commerce/orders/{$order->id}/biteship/book")->assertNotFound();
 });
 
 it('gives the order page panel its booking and buttons', function () {
