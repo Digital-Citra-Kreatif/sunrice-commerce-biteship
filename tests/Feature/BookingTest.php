@@ -49,6 +49,24 @@ it('books the pickup when the order is paid and ships it with the waybill', func
     expect($order->events()->pluck('message')->implode("\n"))->toContain('Biteship (JNE) (JNE0001)');
 });
 
+it('books from the origin the order was placed with, not the store address', function () {
+    // An extension (a location, a rental branch) chose where this order ships from; the BITESHIP_ORIGIN_* values are for the store only.
+    config(['commerce-biteship.origin.postal_code' => '40161', 'commerce-biteship.origin.contact_phone' => '0811111111']);
+    $order = biteshipOrderPlaced();
+    $order->update(['meta' => [...(array) $order->meta, 'shipping_origin' => [
+        'name' => 'Gudang Timur', 'phone' => '0822222222', 'line1' => 'Jl. Timur 5', 'postal_code' => '40292', 'country' => 'ID', 'latitude' => '-6.93', 'longitude' => '107.70',
+    ]]]);
+    Http::fake(['api.biteship.com/v1/orders' => Http::response(biteshipOrder())]);
+
+    app(MarkOrderPaid::class)->handle($order->fresh(), Actor::system());
+
+    Http::assertSent(fn (Request $r) => str_ends_with($r->url(), '/v1/orders')
+        && $r['origin_postal_code'] === 40292
+        && $r['origin_coordinate'] === ['latitude' => -6.93, 'longitude' => 107.7]
+        && $r['origin_contact_name'] === 'Gudang Timur' && $r['origin_contact_phone'] === '0822222222'
+        && str_starts_with($r['origin_address'], 'Jl. Timur 5'));
+});
+
 it('books cash on delivery orders when they are placed, collecting the total', function () {
     Http::fake([
         'api.biteship.com/v1/rates/couriers' => Http::response(biteshipRates()),

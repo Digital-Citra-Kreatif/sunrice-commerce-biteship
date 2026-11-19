@@ -145,7 +145,8 @@ class BiteshipShipping implements BooksShipments, ShippingMethodType, TracksShip
         $service = (string) ($order->shipping_method['service'] ?? '');
         [$courier, $type] = array_pad(explode('.', $service, 2), 2, '');
         $method = ShippingMethod::query()->find($order->shipping_method['method_id'] ?? null);
-        $store = Address::fromArray((array) $this->settings->get('general.address', []));
+        // Where the order ships from: the origin chosen when it was placed (a location), else the store.
+        $from = $order->shippingOrigin();
         $to = $order->shippingAddress();
         if ($courier === '' || $type === '' || $to === null) {
             throw new BiteshipException('The order has no Biteship service or shipping address.');
@@ -163,11 +164,11 @@ class BiteshipShipping implements BooksShipments, ShippingMethodType, TracksShip
             'shipper_contact_phone' => (string) $this->settings->get('general.phone', ''),
             'shipper_contact_email' => (string) $this->settings->get('general.email', ''),
             'shipper_organization' => (string) ($this->settings->get('general.name') ?: config('app.name')),
-            'origin_contact_name' => (string) (config('commerce-biteship.origin.contact_name') ?: $store->get('name') ?: $this->settings->get('general.name') ?: config('app.name')),
-            'origin_contact_phone' => (string) (config('commerce-biteship.origin.contact_phone') ?: $store->get('phone') ?: $this->settings->get('general.phone', '')),
-            'origin_address' => Locations::street($store),
+            'origin_contact_name' => Locations::contactName($from),
+            'origin_contact_phone' => Locations::contactPhone($from),
+            'origin_address' => Locations::street($from),
             'origin_note' => (string) config('commerce-biteship.origin.note', ''),
-            ...Locations::orderFields('origin', $this->locations->origin($store)),
+            ...Locations::orderFields('origin', $this->locations->origin($from)),
             'origin_collection_method' => $collection,
             'destination_contact_name' => (string) ($to->get('name') ?: $order->customer_name),
             'destination_contact_phone' => (string) ($to->get('phone') ?: $order->phone),

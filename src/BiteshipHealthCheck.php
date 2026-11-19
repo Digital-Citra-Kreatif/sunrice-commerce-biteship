@@ -8,7 +8,7 @@ use Sunrice\Commerce\Health\HealthCheck;
 use Sunrice\Commerce\Health\HealthResult;
 use Sunrice\Commerce\Settings\StoreSettings;
 use Sunrice\Commerce\Shipping\Models\ShippingMethod;
-use Sunrice\Commerce\Support\Address;
+use Sunrice\Commerce\Shipping\ShippingOrigins;
 
 /** The key is set (and live in production), the store address can be found, the admin panel is published. */
 class BiteshipHealthCheck implements HealthCheck
@@ -32,7 +32,7 @@ class BiteshipHealthCheck implements HealthCheck
         if (! $client->configured()) {
             return HealthResult::error('The Biteship API key is not set: checkout shows no Biteship rates.', 'Set BITESHIP_API_KEY in .env (Biteship dashboard → Integrations → API).');
         }
-        $origin = app(Locations::class)->origin(Address::fromArray((array) app(StoreSettings::class)->get('general.address', [])));
+        $origin = app(Locations::class)->origin(ShippingOrigins::store());
         if ($origin['postal_code'] === null && $origin['area_id'] === null && ! Locations::hasCoordinates($origin)) {
             return HealthResult::error('Biteship can\'t tell where parcels leave from.', 'Add the postal code to the store address (Settings → Store → General) or set BITESHIP_ORIGIN_POSTAL_CODE.');
         }

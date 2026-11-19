@@ -29,7 +29,7 @@ class Labels
     {
         $order = $shipment->order;
         $booking = (array) ($shipment->meta['biteship'] ?? []);
-        $store = Address::fromArray((array) $this->settings->get('general.address', []));
+        $from = $order->shippingOrigin();
         $lines = $order->items()->get()->keyBy('id');
         $items = [];
         $weight = 0;
@@ -53,9 +53,9 @@ class Labels
             'to' => $order->shippingAddress() ?? Address::fromArray([]),
             'street' => Locations::street($order->shippingAddress() ?? Address::fromArray([]), "\n"),
             'from' => [
-                'name' => (string) (config('commerce-biteship.origin.contact_name') ?: $store->get('name') ?: $this->settings->get('general.name') ?: config('app.name')),
-                'phone' => (string) (config('commerce-biteship.origin.contact_phone') ?: $store->get('phone') ?: $this->settings->get('general.phone', '')),
-                'address' => Locations::street($store),
+                'name' => Locations::contactName($from),
+                'phone' => Locations::contactPhone($from),
+                'address' => Locations::street($from),
             ],
             'weight' => $weight,
             'cod' => $order->payment_method === 'cod' && $order->payment_status !== 'paid' ? max(0, $order->total - $order->paid_total) : 0,

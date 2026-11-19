@@ -6,6 +6,8 @@ namespace Sunrice\CommerceBiteship;
 
 use Illuminate\Support\Facades\Cache;
 use Sunrice\Commerce\Regions\Region;
+use Sunrice\Commerce\Settings\StoreSettings;
+use Sunrice\Commerce\Shipping\ShippingOrigins;
 use Sunrice\Commerce\Support\Address;
 use Throwable;
 
@@ -18,10 +20,19 @@ class Locations
 {
     public function __construct(protected Client $client) {}
 
-    /** @return array{postal_code: int|null, area_id: string|null, latitude: float|null, longitude: float|null} */
-    public function origin(Address $store): array
+    /**
+     * Where parcels leave from. The BITESHIP_ORIGIN_* values stand in for
+     * the store address only: an origin an extension chose for the order
+     * (a location, a branch) is used as it is.
+     *
+     * @return array{postal_code: int|null, area_id: string|null, latitude: float|null, longitude: float|null}
+     */
+    public function origin(Address $from): array
     {
-        $point = $this->locate($store);
+        $point = $this->locate($from);
+        if (! self::isStore($from)) {
+            return $point;
+        }
         $postal = config('commerce-biteship.origin.postal_code');
         $lat = config('commerce-biteship.origin.latitude');
         $lng = config('commerce-biteship.origin.longitude');
@@ -32,6 +43,30 @@ class Locations
             'latitude' => is_numeric($lat) ? (float) $lat : $point['latitude'],
             'longitude' => is_numeric($lng) ? (float) $lng : $point['longitude'],
         ];
+    }
+
+    /** Whether the origin is the store address (Settings → Store → General), not one an extension chose. */
+    public static function isStore(Address $from): bool
+    {
+        return $from->toArray() === ShippingOrigins::store()->toArray();
+    }
+
+    /** Who the courier asks for at the origin. */
+    public static function contactName(Address $from): string
+    {
+        $settings = app(StoreSettings::class);
+        $configured = self::isStore($from) ? config('commerce-biteship.origin.contact_name') : null;
+
+        return (string) ($configured ?: $from->get('name') ?: $settings->get('general.name') ?: config('app.name'));
+    }
+
+    /** The phone the courier calls at the origin. */
+    public static function contactPhone(Address $from): string
+    {
+        $settings = app(StoreSettings::class);
+        $configured = self::isStore($from) ? config('commerce-biteship.origin.contact_phone') : null;
+
+        return (string) ($configured ?: $from->get('phone') ?: $settings->get('general.phone', ''));
     }
 
     /** @return array{postal_code: int|null, area_id: string|null, latitude: float|null, longitude: float|null} */
