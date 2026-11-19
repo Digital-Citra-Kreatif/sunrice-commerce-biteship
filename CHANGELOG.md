@@ -8,6 +8,8 @@ Works with Sunrice Commerce 0.1, 0.2 or 0.3; shipping from a branch and order sc
 0.3. Update with `composer require sunrice/commerce-biteship:^0.2`. The new **Shipping label** setting
 defaults to the store's label, so nothing changes until you choose Biteship's.
 
+- Fix: the order page's Biteship panel and booking use the newest Biteship shipment. Commerce orders
+  an order's shipments by id, so `latest('id')` still found the oldest one.
 - **Hourly tracking applies the whole booking**: `commerce:tick`'s check (`track()`) now updates the
   shipment as a webhook does. Before, it only noticed deliveries, so with a missed webhook a
   cancelled, rejected, returned or repriced booking kept its old status on the order page.

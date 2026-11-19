@@ -33,7 +33,7 @@ class Bookings
     /** The order's latest Biteship shipment. */
     public function shipmentFor(Order $order): ?Shipment
     {
-        return $order->shipments()->latest('id')->get()->first(fn (Shipment $s) => isset($s->meta['biteship']['order_id']));
+        return $order->shipments()->reorder('id', 'desc')->get()->first(fn (Shipment $s) => isset($s->meta['biteship']['order_id']));
     }
 
     public static function active(?Shipment $shipment): bool
