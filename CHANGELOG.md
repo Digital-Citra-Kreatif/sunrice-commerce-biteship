@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Works with Sunrice Commerce 0.3 (`sunrice/commerce` `^0.1 || ^0.2 || ^0.3`).
+- **Order scopes**: the order page's Biteship buttons and the label (book, cancel, refresh, print)
+  answer `404` for an order outside the staff member's scope (commerce 0.3's
+  `Commerce::scopeAdminOrders()`), and resolve the order after sign-in, as commerce's own order
+  pages do. Before, a scoped staff member could reach them by order id.
+- **Labels from a branch**: a label's sender is the branch the pickup was booked at (the order's
+  shipping origin), not always the store address.
 - **Ships from a branch**: with sunrice/commerce's shipping origins (`Commerce::shippingOriginUsing()`, next release), rates are quoted from the cart's origin, with its own postal code and map point (so GoSend and Grab can be offered), and the pickup is booked there with its name and phone (`Order::shippingOrigin()`). The `commerce-biteship.origin.*` overrides apply to the store address only. Nothing changes without an extension's origin, or on commerce 0.2.
 
 ## 0.1.0 (2026-11-07)

@@ -14,7 +14,8 @@ use Sunrice\CommerceBiteship\Label\Code128;
 /**
  * Shipping labels for Biteship shipments (Biteship has no label API):
  * courier, waybill barcode, routing code, both addresses, weight, COD and
- * contents, on A6 paper.
+ * contents, on A6 paper. The sender is where the pickup was booked: the
+ * order's branch when an extension chose one, else the store.
  */
 class Labels
 {
@@ -29,7 +30,10 @@ class Labels
     {
         $order = $shipment->order;
         $booking = (array) ($shipment->meta['biteship'] ?? []);
-        $store = Address::fromArray((array) $this->settings->get('general.address', []));
+        // Where the courier picks up, as booked: a branch an extension chose (meta.shipping_origin), else the store.
+        $origin = $order->meta('shipping_origin');
+        $branch = is_array($origin) && $origin !== [];
+        $store = Address::fromArray($branch ? $origin : (array) $this->settings->get('general.address', []));
         $lines = $order->items()->get()->keyBy('id');
         $items = [];
         $weight = 0;
@@ -53,8 +57,8 @@ class Labels
             'to' => $order->shippingAddress() ?? Address::fromArray([]),
             'street' => Locations::street($order->shippingAddress() ?? Address::fromArray([]), "\n"),
             'from' => [
-                'name' => (string) (config('commerce-biteship.origin.contact_name') ?: $store->get('name') ?: $this->settings->get('general.name') ?: config('app.name')),
-                'phone' => (string) (config('commerce-biteship.origin.contact_phone') ?: $store->get('phone') ?: $this->settings->get('general.phone', '')),
+                'name' => (string) (($branch ? $store->get('name') : null) ?: config('commerce-biteship.origin.contact_name') ?: $store->get('name') ?: $this->settings->get('general.name') ?: config('app.name')),
+                'phone' => (string) (($branch ? $store->get('phone') : null) ?: config('commerce-biteship.origin.contact_phone') ?: $store->get('phone') ?: $this->settings->get('general.phone', '')),
                 'address' => Locations::street($store),
             ],
             'weight' => $weight,

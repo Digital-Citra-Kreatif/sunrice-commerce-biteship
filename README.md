@@ -119,7 +119,7 @@ Settings → Store → Shipping → a zone → add a method of the type **Bitesh
 | Setting | |
 | --- | --- |
 | Couriers | Which couriers checkout quotes (default JNE, J&T, SiCepat, AnterAja, POS) |
-| Book the pickup | **From the order page**, or **When the order is paid** (cash on delivery: when it is placed) |
+| Book the pickup | **From the order page**, or **When the order is paid** (cash on delivery: when it is placed; with a deposit, once the balance is paid too) |
 | Hand over | The courier picks up at the store, or you drop parcels off at the courier |
 | Insure parcels for their value | Adds Biteship's insurance to rates and bookings |
 | What you ship | Biteship's item category (fashion, food and drink, electronics…); food and drink gets instant couriers assigned faster |
@@ -144,13 +144,15 @@ commerce gets a shipment with the courier, the waybill as tracking number, Bites
 link and the price you pay; the order is marked shipped and the customer gets commerce's
 "shipped" email.
 
-The **Biteship** panel on the order page (permission `commerce.shipments.manage`) shows the
+The **Biteship** panel on the order page (permission `commerce.shipments.manage`; with commerce's
+order scopes, `Commerce::scopeAdminOrders()`, only for orders the staff member may see) shows the
 booking (status, courier, waybill, driver, price, live tracking) and has the buttons:
 
 - **Book pickup**: for orders whose method books from the order page, or when an automatic booking
   failed. Failures (no balance, an address Biteship can't find) are on the order's timeline and
   on the panel.
-- **Print label**: the shipping label PDF. Override the template with
+- **Print label**: the shipping label PDF. The sender is where the pickup was booked: the order's
+  branch when an extension chose one, else the store. Override the template with
   `resources/views/vendor/commerce-biteship/label.blade.php`.
 - **Refresh**: fetches the booking now.
 - **Cancel booking**: until the courier has picked the parcel up (Biteship's rule), cancels it at
