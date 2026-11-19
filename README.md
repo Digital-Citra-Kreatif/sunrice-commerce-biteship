@@ -209,7 +209,14 @@ most make the store ask Biteship again. Statuses move the shipment:
 Every change is on the order's timeline, including a new price when the courier weighs the parcel
 differently at pickup (`order.price`; the shipment's cost follows). Some couriers issue the
 waybill only after pickup; it arrives with the `order.waybill_id` webhook. Without webhooks,
-`commerce:tick` still asks Biteship about each open booking once an hour.
+`commerce:tick` still asks Biteship about each open booking once an hour and applies the answer as
+a webhook would (status, waybill, price and the timeline), so a missed webhook doesn't leave a
+cancelled or returned booking looking active.
+
+Tracking reads the booking from the Order API (`GET /v1/orders/{id}`, its courier history), not
+Biteship's Tracking API (`GET /v1/trackings/{id}`), which counts against the monthly Tracking quota
+on live keys. Shipments with a waybill you entered yourself (not booked through Biteship) aren't
+tracked by this package.
 
 ## Testing Mode
 

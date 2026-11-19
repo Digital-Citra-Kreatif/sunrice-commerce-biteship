@@ -222,11 +222,14 @@ class BiteshipShipping implements BooksShipments, ShippingMethodType, TracksShip
             return new TrackingInfo((string) ($shipment->meta['biteship']['status'] ?? 'unknown'));
         }
         $booking = $this->client->order($id);
-        $status = (string) ($booking['status'] ?? 'unknown');
+        // Everything a webhook would bring (status, waybill, price, timeline), so a missed webhook
+        // still cancels, returns or reprices the shipment, not only marks it delivered.
+        app(Bookings::class)->apply($shipment, $booking);
+        $status = Bookings::status($booking['status'] ?? null) ?: 'unknown';
 
         return new TrackingInfo(Bookings::statusLabel($status), $status === 'delivered', array_map(fn (array $h) => [
             'at' => (string) ($h['updated_at'] ?? ''),
-            'status' => (string) ($h['note'] ?? Bookings::statusLabel((string) ($h['status'] ?? ''))),
+            'status' => (string) ($h['note'] ?? Bookings::statusLabel(Bookings::status($h['status'] ?? null))),
         ], array_values(array_filter((array) ($booking['courier']['history'] ?? []), 'is_array'))));
     }
 
