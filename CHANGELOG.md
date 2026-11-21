@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.0 (2026-11-21)
+
+- Requires Sunrice 0.8 and Sunrice Commerce 0.4 (`sunrice/admin` `^0.8`, `sunrice/commerce` `^0.4`),
+  which need each other: Commerce 0.3 doesn't run on Sunrice 0.8. Stay on 0.2 for older versions.
+  Update with `composer require sunrice/commerce-biteship:^0.3 -W`.
+
 ## 0.2.0 (2026-11-19)
 
 Works with Sunrice Commerce 0.1, 0.2 or 0.3; shipping from a branch and order scopes need commerce
