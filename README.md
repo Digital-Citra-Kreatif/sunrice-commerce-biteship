@@ -49,8 +49,8 @@ dashboard. In order:
 6. Turn on **Mode Testing** in the dashboard sidebar and create a test key (Integrations → API →
    Tambah Kunci API). Put it in `BITESHIP_API_KEY`.
 7. Add the webhook: Integrations → **Pengaturan** → Webhook → **Tambah Webhook**, URL
-   `https://your-store.example/biteship/webhook` (HTTPS, reachable from the internet; add
-   `?token=…` if you set `BITESHIP_WEBHOOK_TOKEN`), events `order.status`, `order.price` and
+   `https://your-store.example/biteship/webhook?token=…` (HTTPS, reachable from the internet;
+   use a random string and set the same one in `BITESHIP_WEBHOOK_TOKEN`), events `order.status`, `order.price` and
    `order.waybill_id`. Biteship calls it once when you save; the package answers 200.
 8. Place a test order in the store, book it (Book pickup on the order page, or pay it with
    automatic booking on) and print its label.
@@ -103,14 +103,15 @@ Features.
 | `BITESHIP_ORIGIN_CONTACT_NAME`, `BITESHIP_ORIGIN_CONTACT_PHONE` | | Who the courier asks for at pickup; empty uses the store's name and phone |
 | `BITESHIP_ORIGIN_NOTE` | | A note for the courier ("ring the bell at the side door") |
 | `BITESHIP_WEBHOOK_PATH` | `biteship/webhook` | See [Tracking and webhooks](#tracking-and-webhooks) |
-| `BITESHIP_WEBHOOK_TOKEN` | | Optional: a random string the webhook URL must carry as `?token=…` |
+| `BITESHIP_WEBHOOK_TOKEN` | | Recommended: a random string the webhook URL must carry as `?token=…`. Empty accepts webhooks without it (the health check warns in production) |
 | `BITESHIP_QUEUE` | | The queue for automatic bookings (null: the default) |
 
 Publish `config/commerce-biteship.php` with `php artisan vendor:publish --tag=commerce-biteship-config`
 for the rest (base URL, timeout). The key stays in `.env`: it is never shown in the admin.
 
 The store health check (Shop dashboard, `php artisan commerce:doctor`) tells you when the key is
-missing, the origin can't be found, a test key is used in production, or the panel isn't published.
+missing, the origin can't be found, a test key is used or the webhook has no token in production, or
+the panel isn't published.
 
 ## Setting up the shipping method
 
@@ -185,9 +186,11 @@ variant, SKU, price, weight and size, and the method's category.
 Biteship has no API for webhooks: add it in the dashboard.
 
 1. Biteship dashboard → Integrations → **Pengaturan** (Settings) → Webhook → **Tambah Webhook**.
-2. URL: `https://your-store.example/biteship/webhook` (with `?token=…` when you set
-   `BITESHIP_WEBHOOK_TOKEN`). It must be HTTPS and reachable from the internet; Biteship calls it
-   once when you save, and the package answers 200.
+2. URL: `https://your-store.example/biteship/webhook?token=…`, with a random string as the token,
+   and the same string in `BITESHIP_WEBHOOK_TOKEN`. It must be HTTPS and reachable from the
+   internet; Biteship calls it once when you save, and the package answers 200. On a store that
+   already receives webhooks, change the URL in Biteship first and set the variable after: a
+   token in `.env` that Biteship doesn't send yet answers 403.
 3. Events: `order.status`, `order.price` and `order.waybill_id`.
 4. Add it once in Testing Mode and once in live mode: each mode has its own webhooks.
 
@@ -196,7 +199,8 @@ In Testing Mode, Biteship's order list has a yellow button on each order to fire
 
 Biteship doesn't sign webhooks, so the package only reads which booking changed from them and
 then fetches that booking from Biteship's API before it changes anything. A forged webhook can at
-most make the store ask Biteship again. Statuses move the shipment:
+most make the store ask Biteship again; with `BITESHIP_WEBHOOK_TOKEN` set, webhooks without the
+token are refused (403) before that. Statuses move the shipment:
 
 | Biteship | Shipment |
 | --- | --- |

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The health check warns in production when `BITESHIP_WEBHOOK_TOKEN` is empty: the webhook then
+  accepts calls from anyone (each can only make the store fetch a booking from Biteship again).
+  The README now sets the token up as part of adding the webhook. Webhooks without a configured
+  token keep working as before.
+
 ## 0.3.0 (2026-11-21)
 
 - Requires Sunrice 0.8 and Sunrice Commerce 0.4 (`sunrice/admin` `^0.8`, `sunrice/commerce` `^0.4`),
