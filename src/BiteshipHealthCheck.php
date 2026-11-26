@@ -10,7 +10,7 @@ use Sunrice\Commerce\Settings\StoreSettings;
 use Sunrice\Commerce\Shipping\Models\ShippingMethod;
 use Sunrice\Commerce\Support\Address;
 
-/** The key is set (and live in production), the store address can be found, the admin panel is published. */
+/** The key is set (and live in production), the store address can be found, the webhook has a token in production, the admin panel is published. */
 class BiteshipHealthCheck implements HealthCheck
 {
     public function key(): string
@@ -42,6 +42,9 @@ class BiteshipHealthCheck implements HealthCheck
         }
         if ($client->testing() && app()->isProduction()) {
             return HealthResult::warning('Biteship is in Testing Mode: bookings are simulated and no courier comes.', 'Use a live key (biteship_live.…) in BITESHIP_API_KEY.');
+        }
+        if ((string) config('commerce-biteship.webhook_token') === '' && app()->isProduction()) {
+            return HealthResult::warning('The Biteship webhook has no token: anyone can make the store fetch its bookings from Biteship again.', 'Add ?token=… with a random string to the webhook URL in Biteship\'s dashboard, then set the same string in BITESHIP_WEBHOOK_TOKEN.');
         }
         if (! is_file(public_path('vendor/commerce-biteship/admin.js'))) {
             return HealthResult::warning('The Biteship panel for the order page isn\'t published.', 'Run php artisan vendor:publish --tag=commerce-biteship-assets --force');

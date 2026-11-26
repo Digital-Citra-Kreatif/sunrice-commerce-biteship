@@ -103,7 +103,7 @@ it('gives the order page panel its booking and buttons', function () {
         ->and($panel['data']['urls']['label'])->toEndWith("/admin/commerce/orders/{$order->id}/biteship/{$order->shipments()->value('id')}/label");
 });
 
-it('checks the key, the origin and Testing Mode in production', function () {
+it('checks the key, the origin, Testing Mode and the webhook token in production', function () {
     $check = app(BiteshipHealthCheck::class);
     config(['commerce-biteship.api_key' => null]);
     expect($check->run()->status)->toBe(HealthResult::ERROR);
@@ -112,7 +112,10 @@ it('checks the key, the origin and Testing Mode in production', function () {
     app()->detectEnvironment(fn () => 'production');
     expect($check->run())->status->toBe(HealthResult::WARNING)->message->toContain('Testing Mode');
 
-    config(['commerce-biteship.api_key' => 'biteship_live.key']);
+    config(['commerce-biteship.api_key' => 'biteship_live.key', 'commerce-biteship.webhook_token' => null]);
+    expect($check->run())->status->toBe(HealthResult::WARNING)->message->toContain('webhook has no token');
+
+    config(['commerce-biteship.webhook_token' => 'secret-token']);
     expect($check->run())->status->toBe(HealthResult::WARNING)->message->toContain('published');
 });
 
