@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Security fix**: the webhook route answers 403 when `BITESHIP_WEBHOOK_TOKEN` is not set —
+  before, an empty token skipped the check, so anyone could make the store call Biteship's API.
+  Set a random token and add `?token=…` to the webhook URL in Biteship's dashboard.
+
 ## 0.3.0 (2026-11-21)
 
 - Requires Sunrice 0.8 and Sunrice Commerce 0.4 (`sunrice/admin` `^0.8`, `sunrice/commerce` `^0.4`),

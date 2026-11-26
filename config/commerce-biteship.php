@@ -36,9 +36,10 @@ return [
     'webhook_path' => env('BITESHIP_WEBHOOK_PATH', 'biteship/webhook'),
 
     /*
-    | Optional: a random string Biteship must send as ?token=… on the webhook
-    | URL. Webhooks are checked against the API either way; the token keeps
-    | strangers from making the store ask Biteship.
+    | A random string Biteship must send as ?token=… on the webhook URL.
+    | Required: without it the webhook route answers 403. Webhooks are also
+    | checked against the API either way; the token keeps strangers from
+    | making the store ask Biteship.
     */
     'webhook_token' => env('BITESHIP_WEBHOOK_TOKEN'),
 

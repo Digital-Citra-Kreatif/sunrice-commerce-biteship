@@ -12,6 +12,7 @@ use Sunrice\Commerce\Shipping\Models\ShippingMethod;
 use Sunrice\Commerce\Shipping\ShipmentTracker;
 
 beforeEach(function () {
+    config(['commerce-biteship.webhook_token' => 'test-token']);
     $this->method = biteshipStore();
 });
 
@@ -127,16 +128,16 @@ it('follows the booking through webhooks, trusting only the API', function () {
     $shipment = $order->shipments()->sole();
     expect($shipment->tracking_number)->toBeNull();
 
-    $this->postJson('/biteship/webhook', ['event' => 'order.status', 'order_id' => 'bs_order_1', 'status' => 'delivered'])->assertOk();
+    $this->postJson('/biteship/webhook?token=test-token', ['event' => 'order.status', 'order_id' => 'bs_order_1', 'status' => 'delivered'])->assertOk();
     expect($shipment->fresh())->status->toBe('in_transit')->tracking_number->toBe('JNE0009');
 
-    $this->postJson('/biteship/webhook', ['event' => 'order.status', 'order_id' => 'bs_order_1'])->assertOk();
+    $this->postJson('/biteship/webhook?token=test-token', ['event' => 'order.status', 'order_id' => 'bs_order_1'])->assertOk();
     expect($shipment->fresh())->status->toBe('delivered')->delivered_at->not->toBeNull();
 
     // Biteship's test ping and unknown bookings: 200, nothing fetched.
     $sent = count(Http::recorded());
-    $this->postJson('/biteship/webhook', [])->assertOk();
-    $this->postJson('/biteship/webhook', ['order_id' => 'someone-else'])->assertOk();
+    $this->postJson('/biteship/webhook?token=test-token', [])->assertOk();
+    $this->postJson('/biteship/webhook?token=test-token', ['order_id' => 'someone-else'])->assertOk();
     expect(Http::recorded())->toHaveCount($sent);
 });
 
@@ -205,7 +206,7 @@ it('cancels only until pickup, and notes a price change at pickup', function () 
     app(MarkOrderPaid::class)->handle($order, Actor::system());
     $shipment = $order->shipments()->sole();
 
-    $this->postJson('/biteship/webhook', ['event' => 'order.price', 'order_id' => 'bs_order_1'])->assertOk();
+    $this->postJson('/biteship/webhook?token=test-token', ['event' => 'order.price', 'order_id' => 'bs_order_1'])->assertOk();
     actingAsUserWith(['commerce.orders.view', 'commerce.shipments.manage']);
     $this->post("/admin/commerce/orders/{$order->id}/biteship/{$shipment->id}/cancel")->assertSessionHasErrors('biteship');
 
@@ -218,6 +219,13 @@ it('asks for the webhook token when one is set', function () {
 
     $this->postJson('/biteship/webhook', ['order_id' => 'bs_order_1'])->assertForbidden();
     $this->postJson('/biteship/webhook?token=secret-token', [])->assertOk();
+});
+
+it('refuses webhooks entirely when no token is configured', function () {
+    config(['commerce-biteship.webhook_token' => null]);
+
+    $this->postJson('/biteship/webhook', ['order_id' => 'bs_order_1'])->assertForbidden();
+    $this->postJson('/biteship/webhook?token=anything', ['order_id' => 'bs_order_1'])->assertForbidden();
 });
 
 it('refreshes bookings still waiting for a waybill from commerce:tick', function () {

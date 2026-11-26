@@ -13,16 +13,19 @@ use Sunrice\CommerceBiteship\Client;
 
 /**
  * Biteship's order.status, order.price and order.waybill_id webhooks.
- * Biteship doesn't sign them, so the body only says which booking
- * changed: the booking itself is fetched from the API before anything is
- * updated. Always 200, so Biteship's test ping and unknown bookings pass.
+ * Biteship doesn't sign them, so the webhook URL must carry the configured
+ * token as ?token=… — without a configured token the route answers 403, so
+ * strangers can't make the store ask Biteship. The body only says which
+ * booking changed: the booking itself is fetched from the API before
+ * anything is updated. Always 200 once the token matches, so Biteship's
+ * test ping and unknown bookings pass.
  */
 class WebhookController
 {
     public function __invoke(Request $request, Client $client, Bookings $bookings): JsonResponse
     {
         $token = (string) config('commerce-biteship.webhook_token');
-        if ($token !== '' && ! hash_equals($token, (string) $request->query('token'))) {
+        if ($token === '' || ! hash_equals($token, (string) $request->query('token'))) {
             return response()->json(['ok' => false], 403);
         }
         $id = $request->input('order_id');

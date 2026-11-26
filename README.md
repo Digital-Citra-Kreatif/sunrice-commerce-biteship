@@ -49,9 +49,10 @@ dashboard. In order:
 6. Turn on **Mode Testing** in the dashboard sidebar and create a test key (Integrations → API →
    Tambah Kunci API). Put it in `BITESHIP_API_KEY`.
 7. Add the webhook: Integrations → **Pengaturan** → Webhook → **Tambah Webhook**, URL
-   `https://your-store.example/biteship/webhook` (HTTPS, reachable from the internet; add
-   `?token=…` if you set `BITESHIP_WEBHOOK_TOKEN`), events `order.status`, `order.price` and
-   `order.waybill_id`. Biteship calls it once when you save; the package answers 200.
+   `https://your-store.example/biteship/webhook?token=…` with a random `BITESHIP_WEBHOOK_TOKEN`
+   (HTTPS, reachable from the internet). Without the token the route answers 403. Events
+   `order.status`, `order.price` and `order.waybill_id`. Biteship calls it once when you save;
+   the package answers 200.
 8. Place a test order in the store, book it (Book pickup on the order page, or pay it with
    automatic booking on) and print its label.
 9. In Biteship's order list, use the yellow **Play Webhook** buttons on that order to walk it
@@ -103,7 +104,7 @@ Features.
 | `BITESHIP_ORIGIN_CONTACT_NAME`, `BITESHIP_ORIGIN_CONTACT_PHONE` | | Who the courier asks for at pickup; empty uses the store's name and phone |
 | `BITESHIP_ORIGIN_NOTE` | | A note for the courier ("ring the bell at the side door") |
 | `BITESHIP_WEBHOOK_PATH` | `biteship/webhook` | See [Tracking and webhooks](#tracking-and-webhooks) |
-| `BITESHIP_WEBHOOK_TOKEN` | | Optional: a random string the webhook URL must carry as `?token=…` |
+| `BITESHIP_WEBHOOK_TOKEN` | required | A random string the webhook URL must carry as `?token=…`; the route answers 403 without it |
 | `BITESHIP_QUEUE` | | The queue for automatic bookings (null: the default) |
 
 Publish `config/commerce-biteship.php` with `php artisan vendor:publish --tag=commerce-biteship-config`
